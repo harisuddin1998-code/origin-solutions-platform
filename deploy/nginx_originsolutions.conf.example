@@ -1,0 +1,27 @@
+# Nginx vhost for the main platform itself (app:app via Gunicorn on
+# 127.0.0.1:8001 - see deploy/gunicorn_originsolutions.service). Separate
+# from the per-client vhosts projects/vps_deploy.py generates automatically
+# under /etc/nginx/sites-available/<client-subdomain>.<DEPLOY_DOMAIN>.conf.
+#
+# One-time setup on the server:
+#   1. Replace REPLACE_WITH_DOMAIN below (e.g. app.originsolutions.com) and
+#      REPLACE_WITH_EMAIL in the certbot command
+#   2. sudo cp deploy/nginx_originsolutions.conf.example /etc/nginx/sites-available/REPLACE_WITH_DOMAIN.conf
+#   3. sudo ln -s /etc/nginx/sites-available/REPLACE_WITH_DOMAIN.conf /etc/nginx/sites-enabled/
+#   4. sudo nginx -t && sudo systemctl reload nginx
+#   5. sudo certbot --nginx -d REPLACE_WITH_DOMAIN --non-interactive --agree-tos -m REPLACE_WITH_EMAIL
+#      (certbot edits this file itself to add the HTTPS/443 block + the
+#      HTTP->HTTPS redirect - you don't write that part by hand)
+
+server {
+    listen 80;
+    server_name REPLACE_WITH_DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

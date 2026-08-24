@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}QC Portal{% endblock %}
+{% block portal_name %}QC Portal{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('qc_portal.dashboard') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Overview</a>
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">QC Queue</a>
+  <a href="{{ url_for('qc_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">QC Portal</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Pending Review</div>
+    <div class="mt-1 text-3xl font-semibold text-amber-600">{{ stats.pending_review }}</div>
+  </a>
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Reviewed Today</div>
+    <div class="mt-1 text-3xl font-semibold text-emerald-600">{{ stats.reviewed_today }}</div>
+  </a>
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Changes Requested</div>
+    <div class="mt-1 text-3xl font-semibold text-red-600">{{ stats.changes_requested }}</div>
+  </a>
+</div>
+
+<p class="mt-6 text-sm text-slate-500">
+  Projects show up in your queue automatically as soon as their developer pushes to a connected GitHub repo.
+</p>
+
+<div class="mt-8 max-w-md rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">API Access (CLI)</h2>
+  <p class="mb-3 text-xs text-slate-500">
+    Generate a personal token to use <code>cli/pms.py</code> from your terminal — status, projects.
+  </p>
+  <form method="post" action="{{ url_for('generate_api_token') }}">
+    <input type="hidden" name="name" value="CLI token">
+    <button class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
+      Generate New Token
+    </button>
+  </form>
+</div>
+{% endblock %}

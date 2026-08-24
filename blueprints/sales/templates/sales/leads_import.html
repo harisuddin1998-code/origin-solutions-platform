@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Sales · Import Leads{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('sales.leads') }}" class="text-sm text-indigo-600 hover:underline">&larr; All Leads</a>
+<h1 class="mt-1 mb-6 text-2xl font-semibold text-slate-900">Import Leads from CSV</h1>
+
+{% if error %}
+<div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
+{% endif %}
+
+{% if done %}
+<div class="mb-6 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Import Summary</h2>
+  <p class="mb-2 text-sm text-emerald-700">{{ imported|length }} lead(s) imported successfully.</p>
+  {% if skipped %}
+  <p class="mb-2 text-sm text-amber-700">{{ skipped|length }} row(s) skipped:</p>
+  <ul class="mb-2 space-y-1 text-xs text-slate-500">
+    {% for s in skipped %}
+    <li>Row {{ s.row }}: {{ s.reason }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <a href="{{ url_for('sales.leads') }}" class="text-sm text-indigo-600 hover:underline">View imported leads &rarr;</a>
+</div>
+{% endif %}
+
+<div class="max-w-xl rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">Upload CSV</h2>
+  <p class="mb-3 text-xs text-slate-500">
+    Columns expected: <code>name, phone, source, message</code> (source is one of
+    <code>meta / tiktok / whatsapp / manual</code> — defaults to <code>manual</code> if blank/missing).
+    Excel sheets can be uploaded after "Save As &rarr; CSV".
+  </p>
+  <form method="post" action="{{ url_for('sales.leads_import') }}" enctype="multipart/form-data" class="flex gap-2">
+    <input type="file" name="file" accept=".csv" required
+           class="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm">
+    <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      Import
+    </button>
+  </form>
+</div>
+{% endblock %}

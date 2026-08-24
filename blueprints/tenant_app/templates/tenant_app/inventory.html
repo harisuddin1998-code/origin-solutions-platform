@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ g.tenant.name }} · Inventory{% endblock %}
+{% block portal_name %}{{ g.tenant.name }}{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('tenant_app.dashboard', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Dashboard</a>
+  <a href="{{ url_for('tenant_app.pos', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">POS</a>
+  <a href="{{ url_for('tenant_app.inventory', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Inventory</a>
+  <a href="{{ url_for('tenant_app.fleet', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Fleet</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Inventory</h1>
+
+<form method="post" class="mb-6 grid grid-cols-1 gap-3 rounded-xl bg-white p-5 shadow-sm sm:grid-cols-4">
+  <input type="text" name="name" placeholder="Item name" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <input type="text" name="sku" placeholder="SKU" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <input type="number" name="quantity" placeholder="Quantity" min="0" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <input type="number" step="0.01" name="price" placeholder="Price" min="0" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <button class="sm:col-span-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Add Item</button>
+</form>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr><th class="px-5 py-3">Name</th><th class="px-5 py-3">SKU</th><th class="px-5 py-3">Qty</th><th class="px-5 py-3">Price</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for i in items %}
+      <tr>
+        <td class="px-5 py-3 font-medium">{{ i.name }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ i.sku }}</td>
+        <td class="px-5 py-3">{{ i.quantity }}</td>
+        <td class="px-5 py-3">${{ "%.2f"|format(i.price) }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">No inventory yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Sales · Companies{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Companies</h1>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Company</th>
+        <th class="px-5 py-3">Industry</th>
+        <th class="px-5 py-3">Deals</th>
+        <th class="px-5 py-3">Status</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for c in companies %}
+      <tr class="cursor-pointer hover:bg-slate-50" onclick="window.location='{{ url_for('sales.company_detail', company_id=c.id) }}'">
+        <td class="px-5 py-3 font-medium text-slate-900">{{ c.name }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.industry or "—" }}</td>
+        <td class="px-5 py-3">{{ c.deal_count }}</td>
+        <td class="px-5 py-3">
+          {% if c.tenant_subdomain %}
+          <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Client ({{ c.tenant_subdomain }})</span>
+          {% else %}
+          <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Prospect</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">No companies yet — convert a lead to create one.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

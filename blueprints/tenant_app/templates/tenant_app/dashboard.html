@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ g.tenant.name }} · Dashboard{% endblock %}
+{% block portal_name %}{{ g.tenant.name }}{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('tenant_app.dashboard', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Dashboard</a>
+  <a href="{{ url_for('tenant_app.pos', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">POS</a>
+  <a href="{{ url_for('tenant_app.inventory', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Inventory</a>
+  <a href="{{ url_for('tenant_app.fleet', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Fleet</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">{{ g.tenant.name }}</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <a href="{{ url_for('tenant_app.inventory', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Inventory Items</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.inventory_items }}</div>
+  </a>
+  <a href="{{ url_for('tenant_app.pos', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Sales Today</div>
+    <div class="mt-1 text-3xl font-semibold text-emerald-600">{{ stats.sales_today }}</div>
+  </a>
+  <a href="{{ url_for('tenant_app.fleet', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Active Vehicles</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.active_vehicles }}</div>
+  </a>
+</div>
+{% endblock %}

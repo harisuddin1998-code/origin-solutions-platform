@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block portal_name %}QC Portal{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('qc_portal.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">QC Queue</a>
+  <a href="{{ url_for('qc_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="{{ url_for('qc_portal.projects') }}" class="text-sm text-indigo-600 hover:underline">&larr; QC Queue</a>
+  <h1 class="mt-1 text-2xl font-semibold text-slate-900">{{ project.name }}</h1>
+  <p class="text-sm text-slate-500">{{ project.description }}</p>
+  <span class="mt-2 inline-block rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700 capitalize">
+    {{ project.status.replace('_', ' ') }}
+  </span>
+  {% if project.live_url %}
+  <a href="{{ project.live_url }}" target="_blank" class="mt-2 ml-2 inline-block text-xs font-medium text-emerald-600 hover:underline">
+    &#128279; Live: {{ project.live_url }}
+  </a>
+  {% endif %}
+</div>
+
+{% if latest_review_ready %}
+<div class="max-w-xl rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">QC Review — {{ latest_review_ready.version_label }}</h2>
+  {% if latest_review_ready.commit_url %}
+  <a href="{{ latest_review_ready.commit_url }}" target="_blank" class="text-xs text-indigo-600 hover:underline">
+    View commit on GitHub →
+  </a>
+  {% endif %}
+
+  <div class="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+    <div class="font-medium text-slate-900">{{ latest_review_ready.commit_message or "(no commit message)" }}</div>
+    <div class="mt-1 text-xs text-slate-500">
+      {{ latest_review_ready.commit_author or "Unknown author" }} ·
+      {{ latest_review_ready.commit_sha[:7] if latest_review_ready.commit_sha else "" }}
+    </div>
+    {% if latest_review_ready.files_changed %}
+    <div class="mt-2 text-xs text-slate-600">
+      {% if latest_review_ready.files_changed.added %}<div>+ Added: {{ latest_review_ready.files_changed.added | join(', ') }}</div>{% endif %}
+      {% if latest_review_ready.files_changed.modified %}<div>~ Modified: {{ latest_review_ready.files_changed.modified | join(', ') }}</div>{% endif %}
+      {% if latest_review_ready.files_changed.removed %}<div>− Removed: {{ latest_review_ready.files_changed.removed | join(', ') }}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <form method="post" action="{{ url_for('qc_portal.review_project', project_id=project.id) }}" class="mt-3 space-y-2">
+    <input type="hidden" name="deployment_id" value="{{ latest_review_ready.id }}">
+    <textarea name="comments" rows="2" placeholder="Review comments (optional)"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+    <div class="flex gap-2">
+      <button name="verdict" value="approved" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+        Approve
+      </button>
+      <button name="verdict" value="changes_requested" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+        Request Changes
+      </button>
+    </div>
+  </form>
+</div>
+{% else %}
+<p class="text-sm text-slate-500">Nothing awaiting your review on this project right now.</p>
+{% endif %}
+
+<div class="mt-8 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Push History</h2>
+  <table class="w-full text-left text-sm">
+    <thead class="text-slate-500"><tr><th class="pb-2">Version</th><th class="pb-2">Status</th><th class="pb-2">Commit</th><th class="pb-2">When</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for d in deployments %}
+      <tr>
+        <td class="py-2">{{ d.version_label }}</td>
+        <td class="py-2 capitalize">{{ d.status.replace('_', ' ') }}</td>
+        <td class="py-2">
+          {% if d.commit_url %}<a href="{{ d.commit_url }}" target="_blank" class="text-indigo-600 hover:underline">{{ (d.commit_message or '').splitlines()[0] if d.commit_message else 'link' }}</a>{% else %}—{% endif %}
+        </td>
+        <td class="py-2 text-slate-500">{{ d.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="py-3 text-slate-400" colspan="4">No deployments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

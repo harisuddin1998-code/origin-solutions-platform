@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Sales · Deals{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Sales Pipeline</h1>
+<div class="mb-4 rounded-lg bg-indigo-50 px-4 py-2 text-xs text-indigo-700">
+  Moving a deal to <strong>Won</strong> automatically creates a real tenant + software project, ready for the Dev/QC/Deploy pipeline.
+</div>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+  {% for stage in stages %}
+  <div class="rounded-xl bg-white p-4 shadow-sm">
+    <div class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ stage.replace('_', ' ') }}</div>
+    <div class="space-y-3">
+      {% for d in deals if d.stage == stage %}
+      <div class="rounded-lg border border-slate-100 p-3 text-sm">
+        <a href="{{ url_for('sales.deal_detail', deal_id=d.id) }}" class="font-medium text-slate-900 hover:underline">{{ d.name }}</a>
+        <div class="mt-1 text-slate-500">{{ d.company_name }}</div>
+        <div class="mt-1 text-xs text-slate-400">${{ "%.2f"|format(d.amount) }} · {{ d.probability }}%</div>
+        <form method="post" action="{{ url_for('sales.update_deal_stage_route', deal_id=d.id) }}" class="mt-2">
+          <select name="stage" onchange="this.form.submit()"
+                  class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+            {% for s in stages %}
+            <option value="{{ s }}" {{ "selected" if s == d.stage else "" }}>{{ s.replace('_', ' ') }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      {% else %}
+      <div class="text-xs text-slate-400">Nothing here.</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

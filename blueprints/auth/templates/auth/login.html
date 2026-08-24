@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Origin Solutions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-slate-950">
+  <div class="relative min-h-screen overflow-hidden">
+    <!-- Full-page video background -->
+    <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline>
+      <source src="{{ url_for('static', filename='video/hero-loop.mp4') }}" type="video/mp4">
+    </video>
+    <div class="absolute inset-0 bg-slate-950/60"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-slate-950/50"></div>
+
+    <!-- Logo -->
+    <div class="relative z-10 flex items-center gap-3 p-8">
+      <img src="{{ url_for('static', filename='images/logo-origins.png') }}" alt="Origin Solutions" class="h-14 w-auto"
+           style="filter: drop-shadow(0 0 10px rgba(255,255,255,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.5));" />
+      <span class="text-xl font-semibold tracking-wide text-white">Origin Solutions</span>
+    </div>
+
+    <!-- Login card -->
+    <div class="relative z-10 flex items-center justify-center px-6 pb-16 pt-4 sm:pt-8">
+      <div class="w-full max-w-sm">
+        <div class="rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
+          <h1 class="mb-1 text-xl font-semibold text-white">Sign in</h1>
+          <p class="mb-6 text-sm text-slate-200">Platform &amp; Software House Management System</p>
+
+          {% if error %}
+          <div class="mb-4 rounded-lg border border-red-300/30 bg-red-500/20 px-4 py-2 text-sm text-red-100">{{ error }}</div>
+          {% endif %}
+
+          <form method="post" class="space-y-4">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-100">Username</label>
+              <input type="text" name="email" required
+                     class="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-300 focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/20" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-100">Password</label>
+              <input type="password" name="password" required
+                     class="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-300 focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/20" />
+            </div>
+            <button type="submit"
+                    class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+              Sign in
+            </button>
+          </form>
+
+          <p class="mt-6 text-xs text-slate-300">
+            Demo accounts: admin/admin123, dev/dev123, qc/qc123,
+            marketing/marketing123, sales/sales123, tenant/tenant123
+          </p>
+        </div>
+
+        <p class="mt-6 text-center text-xs text-slate-300">&copy; Origin Solutions</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

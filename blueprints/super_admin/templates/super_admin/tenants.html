@@ -1,0 +1,66 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · Tenants{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Tenants</h1>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Name</th>
+        <th class="px-5 py-3">Subdomain</th>
+        <th class="px-5 py-3">Plan</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">1-Click Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for t in tenants %}
+      <tr>
+        <td class="px-5 py-3 font-medium text-slate-900">{{ t.name }}</td>
+        <td class="px-5 py-3 text-slate-500">
+          <a href="{{ url_for('tenant_app.dashboard', tenant_subdomain=t.subdomain) }}" class="hover:underline">/t/{{ t.subdomain }}</a>
+        </td>
+        <td class="px-5 py-3">{{ t.plan }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full px-2 py-1 text-xs font-medium
+            {{ 'bg-emerald-100 text-emerald-700' if t.status == 'active'
+               else 'bg-amber-100 text-amber-700' if t.status == 'suspended'
+               else 'bg-red-100 text-red-700' }}">
+            {{ t.status }}
+          </span>
+        </td>
+        <td class="px-5 py-3">
+          <form method="post" action="{{ url_for('super_admin.update_tenant_status', tenant_id=t.id) }}" class="inline">
+            <input type="hidden" name="status" value="active">
+            <button class="mr-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Activate</button>
+          </form>
+          <form method="post" action="{{ url_for('super_admin.update_tenant_status', tenant_id=t.id) }}" class="inline">
+            <input type="hidden" name="status" value="suspended">
+            <button class="mr-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100">Suspend</button>
+          </form>
+          <form method="post" action="{{ url_for('super_admin.update_tenant_status', tenant_id=t.id) }}" class="inline"
+                onsubmit="return confirm('Kill switch: permanently cut off {{ t.name }}?');">
+            <input type="hidden" name="status" value="killed">
+            <button class="rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">Kill</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

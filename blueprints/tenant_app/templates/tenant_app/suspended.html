@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account Suspended</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex h-full min-h-screen items-center justify-center">
+  <div class="max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+    <div class="mb-3 text-4xl">⛔</div>
+    <h1 class="mb-2 text-xl font-semibold text-slate-900">
+      {{ tenant.name }}'s access is {{ tenant.status }}
+    </h1>
+    <p class="text-sm text-slate-500">
+      This tenant's portal has been {{ tenant.status }} by the platform's Super Admin.
+      Contact your account manager to resolve this.
+    </p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block portal_name %}Dev Portal{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('dev_portal.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Task Board</a>
+  <a href="{{ url_for('dev_portal.projects') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Projects</a>
+  {% if g.user.role == 'developer' %}
+  <a href="{{ url_for('dev_portal.project_preview') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Preview</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="{{ url_for('dev_portal.projects') }}" class="text-sm text-indigo-600 hover:underline">&larr; All Projects</a>
+  <h1 class="mt-1 text-2xl font-semibold text-slate-900">{{ project.name }}</h1>
+  <p class="text-sm text-slate-500">{{ project.description }}</p>
+  <span class="mt-2 inline-block rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700 capitalize">
+    {{ project.status.replace('_', ' ') }}
+  </span>
+  {% if project.live_url %}
+  <a href="{{ project.live_url }}" target="_blank" class="mt-2 ml-2 inline-block text-xs font-medium text-emerald-600 hover:underline">
+    &#128279; Live: {{ project.live_url }}
+  </a>
+  {% endif %}
+</div>
+
+{% if is_developer %}
+<div class="max-w-xl rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">GitHub Connection</h2>
+
+  {% if project.github_repo %}
+  <p class="mb-3 text-sm text-slate-700">
+    Connected to <a href="https://github.com/{{ project.github_repo }}" target="_blank" class="font-medium text-indigo-600 hover:underline">{{ project.github_repo }}</a>.
+    Every push to this repo lands in QC's queue automatically.
+  </p>
+  <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+    <div class="mb-1 font-medium text-slate-700">Webhook setup (GitHub repo → Settings → Webhooks → Add webhook)</div>
+    <div class="mb-2">
+      <div class="text-slate-500">Payload URL</div>
+      <code class="break-all">{{ webhook_url }}</code>
+    </div>
+    <div class="mb-2">
+      <div class="text-slate-500">Content type</div>
+      <code>application/json</code>
+    </div>
+    <div>
+      <div class="text-slate-500">Secret</div>
+      <code class="break-all">{{ project.github_webhook_secret }}</code>
+    </div>
+    <div class="mt-2 text-slate-500">Set "Which events?" to <strong>Just the push event</strong>.</div>
+  </div>
+  <div class="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+    <strong>Required for auto-deploy:</strong> this repo must have a <code>Dockerfile</code> at its
+    root that listens on port <code>8000</code>. When Admin clicks Deploy, we build and run this
+    container automatically and put it live on <code>{{ project.subdomain }}.&lt;your-domain&gt;</code>.
+  </div>
+  <form method="post" action="{{ url_for('dev_portal.set_github_repo', project_id=project.id) }}" class="mt-3 flex gap-2">
+    <input type="text" name="github_repo" value="{{ project.github_repo }}" placeholder="owner/repo" required
+           class="flex-1 rounded-md border border-slate-300 px-2 py-1 text-xs" />
+    <button class="rounded-md bg-slate-800 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700">
+      Update &amp; Regenerate Secret
+    </button>
+  </form>
+  {% else %}
+  <p class="mb-3 text-xs text-slate-500">
+    Link this project to its GitHub repo. Once connected you'll get a webhook secret and payload URL to add on
+    GitHub's side — every real <code>git push</code> then shows up here and in QC's queue, no manual step needed.
+  </p>
+  <form method="post" action="{{ url_for('dev_portal.set_github_repo', project_id=project.id) }}" class="flex gap-2">
+    <input type="text" name="github_repo" placeholder="owner/repo" required
+           class="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm" />
+    <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      Connect
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="mt-8 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Push History</h2>
+  <table class="w-full text-left text-sm">
+    <thead class="text-slate-500">
+      <tr><th class="pb-2">Version</th><th class="pb-2">Commit</th><th class="pb-2">Status</th><th class="pb-2">When</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for d in deployments %}
+      <tr>
+        <td class="py-2">{{ d.version_label }}</td>
+        <td class="py-2">
+          {% if d.commit_message %}
+          <a href="{{ d.commit_url }}" target="_blank" class="text-indigo-600 hover:underline">{{ d.commit_message.splitlines()[0] }}</a>
+          <div class="text-xs text-slate-400">{{ d.commit_author }} · {{ d.commit_sha[:7] if d.commit_sha }}</div>
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        <td class="py-2 capitalize">{{ d.status.replace('_', ' ') }}</td>
+        <td class="py-2 text-slate-500">{{ d.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="py-3 text-slate-400" colspan="4">No pushes yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-8 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">QC Test Reports</h2>
+  <div class="space-y-3">
+    {% for r in qc_reviews %}
+    <div class="rounded-lg border border-slate-100 p-3 text-sm">
+      <div class="flex items-center justify-between">
+        <span class="font-medium capitalize {{ 'text-emerald-600' if r.verdict == 'approved' else 'text-amber-600' }}">
+          {{ r.verdict.replace('_', ' ') }}
+        </span>
+        <span class="text-xs text-slate-400">{{ r.created_at }} · {{ r.version_label }}</span>
+      </div>
+      <p class="mt-1 text-slate-700">{{ r.comments or "(no notes)" }}</p>
+      <div class="mt-1 text-xs text-slate-400">Reviewed by {{ r.reviewer_name or "QC" }}</div>
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-400">No QC reviews yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

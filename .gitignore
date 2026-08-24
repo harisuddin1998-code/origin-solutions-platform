@@ -1,0 +1,22 @@
+.env
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+
+# Scratch/planning notes - not part of the app, and one contained a real API key
+token.txt
+prompt.txt
+proper prompt.txt
+
+# agencycrm is a separate prototype with its own venv/build artifacts
+agencycrm/venv/
+agencycrm/.venv/
+agencycrm/**/__pycache__/
+agencycrm/**/node_modules/
+agencycrm/**/*.pyc
+
+# OS/editor cruft
+.DS_Store
+*.pyc

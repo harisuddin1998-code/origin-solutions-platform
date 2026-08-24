@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ deal.name }}{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('sales.deals') }}" class="text-sm text-indigo-600 hover:underline">&larr; All Deals</a>
+<h1 class="mt-1 mb-1 text-2xl font-semibold text-slate-900">{{ deal.name }}</h1>
+<p class="mb-6 text-sm text-slate-500">
+  {{ deal.company_name }} · ${{ "%.2f"|format(deal.amount) }} ·
+  <span class="capitalize">{{ deal.stage.replace('_', ' ') }}</span>
+</p>
+
+{% if request.args.get('provisioned') %}
+<div class="mb-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+  🎉 Deal won — a tenant and software project were auto-created. Check the notification bell for the new client's
+  login credentials, and assign a developer/QC from the Super Admin Projects page.
+</div>
+{% endif %}
+
+{% if request.args.get('forwarded') %}
+<div class="mb-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+  Forwarded to Super Admin — they'll create a Dev task for this client from their notifications.
+</div>
+{% endif %}
+
+<div class="mb-6 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">Forward to Admin</h2>
+  <p class="mb-3 text-xs text-slate-500">
+    Client wants custom software built? Forward this contact to Super Admin so they can assign a Developer.
+  </p>
+  <form method="post" action="{{ url_for('sales.forward_to_admin', deal_id=deal.id) }}" class="flex gap-2">
+    <input type="text" name="note" placeholder="Note for Admin (optional)"
+           class="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm">
+    <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      Forward
+    </button>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Proposals</h2>
+    <ul class="mb-3 space-y-1 text-sm">
+      {% for p in proposals %}
+      <li>{{ p.title }} <span class="text-xs text-slate-400 capitalize">({{ p.status }})</span></li>
+      {% else %}
+      <li class="text-slate-400">None yet.</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('sales.add_proposal', deal_id=deal.id) }}" class="space-y-2">
+      <input type="text" name="title" placeholder="Proposal title" required class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+      <textarea name="content" rows="2" placeholder="Content (optional)" class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"></textarea>
+      <button class="w-full rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Add Proposal</button>
+    </form>
+  </div>
+
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Quotations</h2>
+    <ul class="mb-3 space-y-1 text-sm">
+      {% for q in quotations %}
+      <li>${{ "%.2f"|format(q.total) }} <span class="text-xs text-slate-400 capitalize">({{ q.status }})</span></li>
+      {% else %}
+      <li class="text-slate-400">None yet.</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('sales.add_quotation', deal_id=deal.id) }}" class="space-y-2">
+      <input type="text" name="description" placeholder="Description" class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+      <input type="number" step="0.01" name="total" placeholder="Total" required class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+      <button class="w-full rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Add Quotation</button>
+    </form>
+  </div>
+
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Invoices</h2>
+    <ul class="mb-3 space-y-1 text-sm">
+      {% for i in invoices %}
+      <li class="flex items-center justify-between">
+        <span>{{ i.number }} — ${{ "%.2f"|format(i.total) }} <span class="text-xs text-slate-400 capitalize">({{ i.status }})</span></span>
+        {% if i.status != 'paid' %}
+        <form method="post" action="{{ url_for('sales.pay_invoice', invoice_id=i.id) }}">
+          <button class="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Mark Paid</button>
+        </form>
+        {% endif %}
+      </li>
+      {% else %}
+      <li class="text-slate-400">None yet.</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('sales.add_invoice', deal_id=deal.id) }}" class="space-y-2">
+      <input type="number" step="0.01" name="total" placeholder="Total" required class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+      <input type="date" name="due_date" class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+      <button class="w-full rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Create Invoice</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

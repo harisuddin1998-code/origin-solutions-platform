@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Super Admin{% endblock %} · Origin Solutions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --paper: #F6F4EE;
+      --ink: #10182B;
+    }
+    body { background: var(--paper); }
+    .admin-heading {
+      font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+      letter-spacing: -0.01em;
+    }
+    #admin-nav a { white-space: nowrap; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(16,24,43,0.18); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16,24,43,0.32); }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full" data-poll-interval="{% block poll_interval %}{% endblock %}">
+  <div class="flex h-full min-h-screen">
+    <aside class="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-5">
+      <div class="flex items-center gap-2.5 px-1">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+             style="background: linear-gradient(135deg, #6c5ce7, #a855f7);">
+          OS
+        </div>
+        <div class="min-w-0">
+          <div class="truncate text-sm font-semibold text-slate-900">Origin Solutions</div>
+          <div class="truncate text-xs text-slate-500">{% block portal_name %}Admin{% endblock %}</div>
+        </div>
+      </div>
+
+      <div class="relative mt-5 flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700">
+          {{ (g.user.name or "?")[0]|upper }}
+        </div>
+        <div class="min-w-0">
+          <div class="truncate text-sm font-medium text-slate-900">{{ g.user.name }}</div>
+          <div class="truncate text-xs capitalize text-slate-500">{{ g.user.role and g.user.role.replace('_', ' ') }}</div>
+        </div>
+        <div class="relative ml-auto shrink-0">
+          <button id="notif-bell-toggle" type="button" class="relative rounded-full p-1.5 text-slate-400 hover:bg-white hover:text-slate-700">
+            🔔
+            <span id="notif-badge" class="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[9px] font-medium text-white ring-2 ring-slate-50 {{ '' if nav_unread_count else 'hidden' }}">
+              {{ nav_unread_count }}
+            </span>
+          </button>
+          <div id="notif-dropdown" class="absolute right-0 z-50 mt-2 hidden w-72 rounded-xl border border-slate-100 bg-white p-2 shadow-xl">
+            <div class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+              {% for n in nav_notifications %}
+              <div class="p-2 text-sm">
+                <div class="font-medium text-slate-900">{{ n.title }}</div>
+                <div class="text-slate-500">{{ n.message }}</div>
+                <div class="mt-1 text-xs text-slate-400">{{ n.created_at }}</div>
+              </div>
+              {% else %}
+              <div class="p-3 text-sm text-slate-400">No notifications yet.</div>
+              {% endfor %}
+            </div>
+            {% if nav_notifications %}
+            <form method="post" action="/notifications/mark-all-read" class="mt-2 border-t border-slate-100 pt-2">
+              <button class="w-full rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50">
+                Mark all as read
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <nav id="admin-nav" class="mt-5 flex flex-1 flex-col gap-1 overflow-y-auto text-sm">
+        {% block sidebar_links %}{% endblock %}
+      </nav>
+
+      <a href="{{ url_for('auth.logout') }}"
+         class="mt-4 block rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors">
+        Sign out
+      </a>
+    </aside>
+
+    <main class="min-w-0 flex-1 overflow-y-auto">
+      <div class="mx-auto max-w-6xl p-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 flex items-start gap-2 rounded-lg border-l-4 px-4 py-2.5 text-sm shadow-sm
+                          {{ 'border-red-400 bg-red-50 text-red-700' if category == 'error' else 'border-emerald-400 bg-emerald-50 text-emerald-700' }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/poll-refresh.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notif-bell.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

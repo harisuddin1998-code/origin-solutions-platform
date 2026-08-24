@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Sales &amp; Call Center{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Real-Time CRM Lead Funnel</h1>
+
+<div id="funnel-board" class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+  {% for status in statuses %}
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-xl bg-white p-4 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200" data-funnel-status="{{ status }}">
+    <div class="text-sm text-slate-500">{{ status }}</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900 funnel-count">{{ funnel[status] }}</div>
+  </a>
+  {% endfor %}
+</div>
+
+<p class="mt-6 text-sm text-slate-500">
+  Leads flow in from Meta/TikTok/WhatsApp (via the Marketing Hub's simulated integrations) straight into the
+  "New" column — this page polls every 10s to pick them up.
+</p>
+{% endblock %}

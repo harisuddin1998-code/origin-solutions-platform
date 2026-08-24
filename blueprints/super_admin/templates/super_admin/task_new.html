@@ -1,0 +1,70 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · New Task{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('super_admin.tasks') }}" class="text-sm text-indigo-600 hover:underline">&larr; All Tasks</a>
+<h1 class="mt-1 mb-6 text-2xl font-semibold text-slate-900">Assign a New Task</h1>
+
+<form method="post" class="max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-sm">
+  <div>
+    <label class="mb-1 block text-sm font-medium text-slate-700">Assign to</label>
+    <select name="assigned_to" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <option value="">Select a user…</option>
+      {% for u in assignees %}
+      <option value="{{ u.id }}">{{ u.name }} ({{ u.role }}) — {{ u.email }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label class="mb-1 block text-sm font-medium text-slate-700">Project (optional)</label>
+    <select name="project_id" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <option value="">No specific project</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label class="mb-1 block text-sm font-medium text-slate-700">Title</label>
+    <input type="text" name="title" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  </div>
+
+  <div>
+    <label class="mb-1 block text-sm font-medium text-slate-700">Description</label>
+    <textarea name="description" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700">Priority</label>
+      <select name="priority" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700">Due date</label>
+      <input type="date" name="due_date" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+    </div>
+  </div>
+
+  <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+    Assign Task
+  </button>
+</form>
+{% endblock %}

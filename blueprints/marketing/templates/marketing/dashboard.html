@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Marketing Hub{% endblock %}
+{% block portal_name %}Marketing Hub{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('marketing.dashboard') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Overview</a>
+  <a href="{{ url_for('marketing.connectors') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Ad Connectors</a>
+  <a href="{{ url_for('marketing.whatsapp_inbox') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">WhatsApp Inbox</a>
+  <a href="{{ url_for('marketing.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Marketing &amp; Ad Hub</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <a href="{{ url_for('marketing.connectors') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Active Ad Accounts</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.ad_accounts }}</div>
+  </a>
+  <a href="{{ url_for('marketing.whatsapp_inbox') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Active WhatsApp Numbers</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.whatsapp_numbers }}</div>
+  </a>
+  <a href="{{ url_for('marketing.whatsapp_inbox') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Leads (last 7 days)</div>
+    <div class="mt-1 text-3xl font-semibold text-indigo-600">{{ stats.leads_7d }}</div>
+  </a>
+</div>
+
+<div class="mt-8 flex gap-3">
+  <form method="post" action="{{ url_for('marketing.simulate_lead') }}">
+    <input type="hidden" name="source" value="meta">
+    <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      Simulate Meta Lead
+    </button>
+  </form>
+  <form method="post" action="{{ url_for('marketing.simulate_lead') }}">
+    <input type="hidden" name="source" value="whatsapp">
+    <button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+      Simulate WhatsApp Lead
+    </button>
+  </form>
+</div>
+
+<p class="mt-4 text-sm text-slate-500">
+  No live ad accounts needed — these buttons fabricate an incoming lead exactly like a real Meta/WhatsApp webhook
+  would, and push it live to this hub and the Sales CRM funnel via WebSockets.
+</p>
+{% endblock %}

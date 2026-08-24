@@ -1,0 +1,31 @@
+# Systemd unit for running the platform itself (app:app) in production via
+# Gunicorn. This is separate from projects/vps_deploy.py, which deploys
+# *client* projects as their own Docker containers - this file is the
+# one-time setup for the main Super Admin/Dev/QC/Sales/Tenant app.
+#
+# One-time setup on the server:
+#   1. Replace every REPLACE_WITH_* placeholder below
+#   2. sudo cp deploy/gunicorn_originsolutions.service /etc/systemd/system/originsolutions.service
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now originsolutions
+#   5. Check it's running: sudo systemctl status originsolutions
+#   6. Logs: journalctl -u originsolutions -f
+#
+# After editing app code and pulling a new version, restart with:
+#   sudo systemctl restart originsolutions
+
+[Unit]
+Description=Origin Solutions platform (Gunicorn)
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=REPLACE_WITH_OS_USER
+Group=REPLACE_WITH_OS_USER
+WorkingDirectory=REPLACE_WITH_REPO_PATH
+ExecStart=REPLACE_WITH_REPO_PATH/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8001 --access-logfile - --error-logfile - app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

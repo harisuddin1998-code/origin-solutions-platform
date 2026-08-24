@@ -1,0 +1,99 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · Financials{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Financial Reports</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <div class="text-sm text-slate-500">Reporting Period</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900">{{ report.period }}</div>
+  </div>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Active Tenants</div>
+    <div class="mt-1 text-2xl font-semibold text-emerald-600">{{ report.active_tenants }}</div>
+  </a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Gross POS Revenue</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900">${{ "%.2f"|format(report.gross_pos_revenue) }}</div>
+  </a>
+</div>
+
+<div class="mt-8 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Revenue by Tenant</h2>
+  <table class="w-full text-left text-sm">
+    <thead class="text-slate-500">
+      <tr><th class="pb-2">Tenant</th><th class="pb-2">Revenue</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for row in revenue_by_tenant %}
+      <tr>
+        <td class="py-2">{{ row.name }}</td>
+        <td class="py-2">${{ "%.2f"|format(row.revenue) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="mb-3 mt-8 text-lg font-semibold text-slate-900">Agency Revenue (Client Billing)</h2>
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Total Invoiced</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900">${{ "%.2f"|format(agency_revenue.total_invoiced) }}</div>
+  </a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Total Paid</div>
+    <div class="mt-1 text-2xl font-semibold text-emerald-600">${{ "%.2f"|format(agency_revenue.total_paid) }}</div>
+  </a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Outstanding</div>
+    <div class="mt-1 text-2xl font-semibold text-amber-600">${{ "%.2f"|format(agency_revenue.outstanding) }}</div>
+  </a>
+</div>
+
+<div class="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Invoice</th>
+        <th class="px-5 py-3">Company</th>
+        <th class="px-5 py-3">Total</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">Action</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for i in client_invoices %}
+      <tr>
+        <td class="px-5 py-3">{{ i.number }}</td>
+        <td class="px-5 py-3">{{ i.company_name }}</td>
+        <td class="px-5 py-3">${{ "%.2f"|format(i.total) }}</td>
+        <td class="px-5 py-3 capitalize">{{ i.status }}</td>
+        <td class="px-5 py-3">
+          {% if i.status != 'paid' %}
+          <form method="post" action="{{ url_for('super_admin.pay_invoice', invoice_id=i.id) }}">
+            <button class="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Mark Paid</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="5">No client invoices yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
