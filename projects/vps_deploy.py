@@ -81,6 +81,12 @@ def render_nginx_config(subdomain, domain, port):
     listen 80;
     server_name {server_name};
 
+    # Per-site logs, so the Web Apps page can attribute traffic and errors to
+    # one project - the shared default log records no Host, so requests there
+    # cannot be told apart.
+    access_log /var/log/nginx/{server_name}.access.log;
+    error_log  /var/log/nginx/{server_name}.error.log;
+
     location / {{
         proxy_pass http://127.0.0.1:{port};
         proxy_set_header Host $host;

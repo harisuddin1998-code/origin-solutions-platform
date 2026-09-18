@@ -1,8 +1,13 @@
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+import os
+
+from flask import (
+    Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
+)
 
 from core.auth import guard_role
 from core.db import execute, query
 from crm.helpers import get_agency_revenue_summary, get_financial_report, record_payment
+from projects import webapp_ops
 from projects.dockerize import DockerizeError
 from projects.github import create_project_from_repo
 from projects.helpers import deploy_project, pause_project, resume_project, set_live_url
@@ -225,6 +230,134 @@ def resume_project_route(project_id):
         abort(404)
     resume_project(project["subdomain"])
     return redirect(url_for("super_admin.projects"))
+
+
+# --------------------------------------------------------------- web apps
+# A per-project control panel in the shape of PythonAnywhere's "Web" tab:
+# every project down the left, and the selected one's whole life - reload,
+# status, traffic, what it runs, its own console, logs, backups - on the
+# right. The heavy lifting lives in projects/webapp_ops.py.
+
+def _webapp_context(project_id, **extra):
+    projects_list = query(
+        "SELECT id, name, subdomain, status, port FROM projects ORDER BY name"
+    )
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    domain = current_app.config["DEPLOY_DOMAIN"]
+    ctx = {
+        "projects": projects_list,
+        "project": project,
+        "domain": domain,
+        "server_name": f"{project['subdomain']}.{domain}",
+        "state": webapp_ops.container_state(project),
+        "traffic": webapp_ops.traffic_stats(project, domain),
+        "backups": webapp_ops.list_backups(project),
+        "source_dir": os.path.join(current_app.config["CLIENT_APPS_DIR"], str(project["id"])),
+        "data_dir": os.path.join(current_app.config["CLIENT_DATA_DIR"], str(project["id"])),
+        "console_output": None,
+    }
+    ctx.update(extra)
+    return ctx
+
+
+@bp.route("/webapps")
+def webapps():
+    first = query("SELECT id FROM projects ORDER BY name LIMIT 1", fetchone=True)
+    if not first:
+        return render_template("super_admin/webapps.html", projects=[], project=None)
+    return redirect(url_for("super_admin.webapp_detail", project_id=first["id"]))
+
+
+@bp.route("/webapps/<int:project_id>")
+def webapp_detail(project_id):
+    return render_template("super_admin/webapps.html", **_webapp_context(project_id))
+
+
+@bp.route("/webapps/<int:project_id>/console", methods=["POST"])
+def webapp_console(project_id):
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    ok, output = webapp_ops.run_console(project, request.form.get("command", ""))
+    if request.headers.get("X-Requested-With") == "fetch":
+        return {"ok": ok, "output": output}
+    return render_template(
+        "super_admin/webapps.html", **_webapp_context(project_id, console_output=output)
+    )
+
+
+@bp.route("/webapps/<int:project_id>/power", methods=["POST"])
+def webapp_power(project_id):
+    """Restart / stop / start the container, without touching its code."""
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    action = request.form.get("action")
+    handler = {
+        "restart": webapp_ops.restart_container,
+        "stop": webapp_ops.stop_container,
+        "start": webapp_ops.start_container,
+    }.get(action)
+    if not handler:
+        abort(400)
+
+    ok, out = handler(project)
+    if ok:
+        flash(f"{project['name']}: {action} done.", "success")
+    else:
+        flash(f"{project['name']}: {action} failed. {out}", "error")
+    return redirect(url_for("super_admin.webapp_detail", project_id=project_id))
+
+
+@bp.route("/webapps/<int:project_id>/config", methods=["POST"])
+def webapp_config(project_id):
+    """Saves what the project runs. These take effect on the next deploy,
+    not immediately - the running container was built from the old values,
+    which is why the page says so next to the button."""
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    def clean(field):
+        return (request.form.get(field) or "").strip() or None
+
+    execute(
+        """UPDATE projects
+              SET branch = %s, main_file_path = %s, start_command = %s, data_mount_path = %s
+            WHERE id = %s""",
+        (clean("branch"), clean("main_file_path"), clean("start_command"),
+         clean("data_mount_path"), project_id),
+    )
+    flash("Saved. Click \"Fetch latest push & rebuild\" to apply it.", "success")
+    return redirect(url_for("super_admin.webapp_detail", project_id=project_id))
+
+
+@bp.route("/webapps/<int:project_id>/restore", methods=["POST"])
+def webapp_restore(project_id):
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    ok, message = webapp_ops.restore_backup(project, request.form.get("backup", ""))
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("super_admin.webapp_detail", project_id=project_id))
+
+
+@bp.route("/webapps/<int:project_id>/logs")
+def webapp_logs(project_id):
+    """Fetched by the page so opening the tab doesn't wait on docker logs."""
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+    return {
+        "app": webapp_ops.container_logs(project),
+        "nginx": webapp_ops.nginx_error_tail(project, current_app.config["DEPLOY_DOMAIN"]),
+    }
 
 
 @bp.route("/tasks")
