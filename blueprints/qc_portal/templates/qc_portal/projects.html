@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}QC Portal · Queue{% endblock %}
+{% block portal_name %}QC Portal{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('qc_portal.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('qc_portal.projects') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">QC Queue</a>
+  <a href="{{ url_for('qc_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">QC Queue</h1>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Project</th>
+        <th class="px-5 py-3">Developer</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">Latest Deployment</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for p in projects %}
+      <tr class="cursor-pointer hover:bg-slate-50" onclick="window.location='{{ url_for('qc_portal.project_detail', project_id=p.id) }}'">
+        <td class="px-5 py-3 font-medium text-slate-900">{{ p.name }}</td>
+        <td class="px-5 py-3">{{ p.developer_name or "Unassigned" }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700 capitalize">{{ p.status.replace('_', ' ') }}</span>
+        </td>
+        <td class="px-5 py-3 text-slate-500 capitalize">{{ (p.latest_deployment_status or "none").replace('_', ' ') }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">Nothing in your QC queue right now.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

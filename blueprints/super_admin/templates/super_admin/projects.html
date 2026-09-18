@@ -1,0 +1,142 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · Projects{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Software Projects</h1>
+
+<form method="post" action="{{ url_for('super_admin.add_project_route') }}" class="mb-6 rounded-xl bg-white p-4 shadow-sm">
+  <div class="flex flex-wrap items-end gap-2">
+    <div>
+      <label class="mb-1 block text-xs font-medium text-slate-500">GitHub repo</label>
+      <input type="text" name="github_repo" placeholder="e.g. harisuddin1998-code/my-project" required
+             class="w-72 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-medium text-slate-500">Branch</label>
+      <input type="text" name="branch" placeholder="main (default)"
+             class="w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-medium text-slate-500">Main file path</label>
+      <input type="text" name="main_file_path" placeholder="auto-detect"
+             class="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+    </div>
+    <button class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+      + Add Project
+    </button>
+  </div>
+  <details class="mt-2">
+    <summary class="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700">Advanced settings</summary>
+    <div class="mt-2">
+      <label class="mb-1 block text-xs font-medium text-slate-500">Start command (overrides auto-detection entirely)</label>
+      <input type="text" name="start_command" placeholder="e.g. gunicorn -b 0.0.0.0:8000 app:app"
+             class="w-full max-w-lg rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+    </div>
+  </details>
+  <p class="mt-2 text-xs text-slate-400">
+    Clones it, auto-detects the stack (Flask, Django, FastAPI, Streamlit, Node, PHP, Ruby, Go, static HTML,
+    or Docker Compose), builds a container, and puts it live on its own subdomain.
+  </p>
+</form>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Project</th>
+        <th class="px-5 py-3">Used By</th>
+        <th class="px-5 py-3">Assign Developer / QC</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">Live URL</th>
+        <th class="px-5 py-3">1-Click Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for p in projects %}
+      <tr>
+        <td class="px-5 py-3 font-medium text-slate-900">
+          {{ p.name }}
+          <div class="text-xs text-slate-400">{{ p.subdomain }}.yourdomain.com</div>
+        </td>
+        <td class="px-5 py-3">{{ p.tenant_name or "Internal Tool" }}</td>
+        <td class="px-5 py-3">
+          <form method="post" action="{{ url_for('super_admin.assign_project_route', project_id=p.id) }}" class="flex gap-1">
+            <select name="developer_id" class="rounded-md border border-slate-300 px-1 py-1 text-xs">
+              <option value="">Developer: none</option>
+              {% for d in developers %}
+              <option value="{{ d.id }}" {{ "selected" if d.id == p.developer_id else "" }}>{{ d.name }}</option>
+              {% endfor %}
+            </select>
+            <select name="qc_id" class="rounded-md border border-slate-300 px-1 py-1 text-xs">
+              <option value="">QC: none</option>
+              {% for qc in qcs %}
+              <option value="{{ qc.id }}" {{ "selected" if qc.id == p.qc_id else "" }}>{{ qc.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Save</button>
+          </form>
+        </td>
+        <td class="px-5 py-3">
+          <span class="rounded-full px-2 py-1 text-xs font-medium capitalize
+            {{ 'bg-emerald-100 text-emerald-700' if p.status == 'live'
+               else 'bg-amber-100 text-amber-700' if p.status in ('paused', 'changes_requested')
+               else 'bg-indigo-100 text-indigo-700' }}">
+            {{ p.status.replace('_', ' ') }}
+          </span>
+        </td>
+        <td class="px-5 py-3">
+          {% if p.live_url %}
+          <a href="{{ p.live_url }}" target="_blank" class="mb-1 block truncate text-xs text-indigo-600 hover:underline">{{ p.live_url }}</a>
+          {% endif %}
+          <form method="post" action="{{ url_for('super_admin.set_live_url_route', project_id=p.id) }}" class="flex gap-1">
+            <input type="text" name="live_url" value="{{ p.live_url or '' }}" placeholder="https://..."
+                   class="w-32 rounded-md border border-slate-300 px-1 py-1 text-xs" />
+            <button class="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Save</button>
+          </form>
+        </td>
+        <td class="px-5 py-3">
+          {% if p.status == 'approved' %}
+          <form method="post" action="{{ url_for('super_admin.deploy_project_route', project_id=p.id) }}" class="inline">
+            <button class="mr-1 rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Deploy</button>
+          </form>
+          {% endif %}
+          {% if p.status == 'live' %}
+          <form method="post" action="{{ url_for('super_admin.pause_project_route', project_id=p.id) }}" class="inline">
+            <button class="mr-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100">Pause</button>
+          </form>
+          {% elif p.status == 'paused' %}
+          <form method="post" action="{{ url_for('super_admin.resume_project_route', project_id=p.id) }}" class="inline">
+            <button class="mr-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Resume</button>
+          </form>
+          {% endif %}
+          {% if p.status not in ('approved', 'live', 'paused') %}
+          <span class="text-xs text-slate-400">Awaiting QC approval</span>
+          {% endif %}
+          {% if p.github_repo %}
+          <a href="vscode://vscode.git/clone?url={{ ('https://github.com/' ~ p.github_repo ~ '.git') | urlencode }}"
+             class="mt-1 inline-block rounded-md bg-slate-700 px-2 py-1 text-xs font-medium text-white hover:bg-slate-600">
+            Open in IDE
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="6">No projects yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

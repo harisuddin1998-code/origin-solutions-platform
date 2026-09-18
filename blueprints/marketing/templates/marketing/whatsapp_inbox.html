@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Marketing Hub · WhatsApp Inbox{% endblock %}
+{% block portal_name %}Marketing Hub{% endblock %}
+{% block poll_interval %}8000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('marketing.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('marketing.connectors') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Ad Connectors</a>
+  <a href="{{ url_for('marketing.whatsapp_inbox') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">WhatsApp Inbox</a>
+  <a href="{{ url_for('marketing.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-2xl font-semibold text-slate-900">Unified WhatsApp Messenger</h1>
+  <form method="post" action="{{ url_for('marketing.simulate_lead') }}">
+    <input type="hidden" name="source" value="whatsapp">
+    <button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+      Simulate Incoming WhatsApp Lead
+    </button>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Active Numbers</h2>
+    <ul class="space-y-2 text-sm">
+      {% for n in numbers %}
+      <li class="flex items-center justify-between">
+        <span>{{ n.phone_number }} <span class="text-slate-400">({{ n.tenant_name }})</span></span>
+        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{{ n.status }}</span>
+      </li>
+      {% else %}
+      <li class="text-slate-400">No numbers yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="rounded-xl bg-white p-5 shadow-sm lg:col-span-2">
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Live Inbox</h2>
+    <div id="whatsapp-feed" class="space-y-3 max-h-[60vh] overflow-y-auto">
+      {% for m in messages %}
+      <div class="rounded-lg border border-slate-100 p-3 text-sm">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span>{{ m.lead_name or "Unknown" }}</span>
+          <span>{{ m.sent_at }}</span>
+        </div>
+        <div class="mt-1 text-slate-700">{{ m.body }}</div>
+      </div>
+      {% else %}
+      <div class="text-slate-400">No messages yet — click "Simulate Incoming WhatsApp Lead" to test the flow.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

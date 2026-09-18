@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Dev Portal · Projects{% endblock %}
+{% block portal_name %}Dev Portal{% endblock %}
+{% block poll_interval %}10000{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('dev_portal.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Task Board</a>
+  <a href="{{ url_for('dev_portal.projects') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Projects</a>
+  {% if g.user.role == 'developer' %}
+  <a href="{{ url_for('dev_portal.project_preview') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Preview</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Software Projects</h1>
+<div class="mb-4 rounded-lg bg-indigo-50 px-4 py-2 text-xs text-indigo-700">
+  Connect a project to its GitHub repo to get real pushes flowing into QC's queue.
+</div>
+
+<form method="post" action="{{ url_for('dev_portal.add_project') }}" class="mb-3 flex items-end gap-2 rounded-xl bg-white p-4 shadow-sm">
+  <div>
+    <label class="mb-1 block text-xs font-medium text-slate-500">GitHub repo</label>
+    <input type="text" name="github_repo" placeholder="e.g. harisuddin1998-code/my-project" required
+           class="w-72 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+  </div>
+  <button class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+    + Add Project
+  </button>
+  <span class="pb-1.5 text-xs text-slate-400">Clones it, builds a container, and puts it live on its own subdomain.</span>
+</form>
+
+<form method="post" action="{{ url_for('dev_portal.sync_github_repos') }}" class="mb-6 flex items-end gap-2 rounded-xl bg-white p-4 shadow-sm">
+  <div>
+    <label class="mb-1 block text-xs font-medium text-slate-500">GitHub username</label>
+    <input type="text" name="github_username" placeholder="e.g. harisuddin1998-code" required
+           class="w-64 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+  </div>
+  <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">
+    Sync all public repos
+  </button>
+  <span class="pb-1.5 text-xs text-slate-400">Imports every public repo not already connected as a new project (without deploying them).</span>
+</form>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Project</th>
+        <th class="px-5 py-3">Developer</th>
+        <th class="px-5 py-3">QC</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">Latest Deployment</th>
+        <th class="px-5 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for p in projects %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-5 py-3 font-medium text-slate-900 cursor-pointer" onclick="window.location='{{ url_for('dev_portal.project_detail', project_id=p.id) }}'">{{ p.name }}</td>
+        <td class="px-5 py-3">{{ p.developer_name or "Unassigned" }}</td>
+        <td class="px-5 py-3">{{ p.qc_name or "Unassigned" }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700 capitalize">{{ p.status.replace('_', ' ') }}</span>
+        </td>
+        <td class="px-5 py-3 text-slate-500 capitalize">{{ (p.latest_deployment_status or "none").replace('_', ' ') }}</td>
+        <td class="px-5 py-3">
+          {% if p.github_repo %}
+          <a href="vscode://vscode.git/clone?url={{ ('https://github.com/' ~ p.github_repo ~ '.git') | urlencode }}"
+             class="inline-block rounded-md bg-slate-700 px-2 py-1 text-xs font-medium text-white hover:bg-slate-600">
+            Open in IDE
+          </a>
+          {% else %}
+          <span class="text-xs text-slate-400">No repo connected</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="6">No projects assigned to you yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

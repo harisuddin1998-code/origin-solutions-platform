@@ -1,0 +1,77 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · Command Center{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <div class="text-xs font-semibold uppercase tracking-widest text-violet-600">Super Admin</div>
+  <h1 class="admin-heading mt-1 text-3xl font-semibold text-slate-900">Run the whole platform with clarity.</h1>
+</div>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Total Tenants</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.tenants }}</div>
+  </a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Active Tenants</div>
+    <div class="mt-1 text-3xl font-semibold text-emerald-600">{{ stats.active_tenants }}</div>
+  </a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Total Users</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.users }}</div>
+  </a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Open Complaints</div>
+    <div class="mt-1 text-3xl font-semibold text-red-600">{{ stats.open_complaints }}</div>
+  </a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Live Software</div>
+    <div class="mt-1 text-3xl font-semibold text-indigo-600">{{ stats.live_projects }}</div>
+  </a>
+</div>
+
+<div class="mt-8 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Recent Global Actions</h2>
+  <table class="w-full text-left text-sm">
+    <thead class="text-slate-500">
+      <tr>
+        <th class="pb-2">Action</th>
+        <th class="pb-2">Target</th>
+        <th class="pb-2">When</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for entry in recent_audit %}
+      <tr>
+        <td class="py-2">{{ entry.action }}</td>
+        <td class="py-2">{{ entry.target_type }} #{{ entry.target_id }}</td>
+        <td class="py-2 text-slate-500">{{ entry.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="py-3 text-slate-400" colspan="3">No actions logged yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="mt-6 text-sm text-slate-500">
+  Use <a href="{{ url_for('super_admin.tasks') }}" class="font-medium text-indigo-600 hover:underline">Tasks</a> to
+  assign work, or the <a href="{{ url_for('super_admin.projects') }}" class="font-medium text-indigo-600 hover:underline">Projects</a>
+  page's 1-click Deploy/Pause/Resume to control what's live.
+</p>
+
+{% set extra_hint = true %}
+{% include "_api_tokens.html" %}
+{% endblock %}

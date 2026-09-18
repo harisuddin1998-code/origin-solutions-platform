@@ -1,0 +1,32 @@
+<div class="mt-8 max-w-md rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-1 text-lg font-semibold text-slate-900">API Access (CLI)</h2>
+  <p class="mb-3 text-xs text-slate-500">
+    Generate a personal token to use <code>cli/pms.py</code> from your terminal (VS Code's included, or hand it to
+    a coding agent) — status, projects{{ ", deploy" if extra_hint }}.
+  </p>
+  <form method="post" action="{{ url_for('generate_api_token') }}">
+    <input type="hidden" name="name" value="CLI token">
+    <button class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
+      Generate New Token
+    </button>
+  </form>
+
+  {% if my_api_tokens %}
+  <div class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+    {% for t in my_api_tokens %}
+    <div class="flex items-center justify-between py-2 text-xs">
+      <div>
+        <div class="font-medium text-slate-700">{{ t.name or "CLI token" }}</div>
+        <div class="text-slate-400">
+          Created {{ t.created_at }}{{ " · last used " ~ t.last_used_at if t.last_used_at else " · never used" }}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('revoke_api_token', token_id=t.id) }}"
+            onsubmit="return confirm('Revoke this token? Anything using it will stop working immediately.');">
+        <button class="rounded-md bg-red-50 px-2 py-1 font-medium text-red-700 hover:bg-red-100">Revoke</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

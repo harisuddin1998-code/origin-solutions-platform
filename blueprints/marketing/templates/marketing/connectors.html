@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Marketing Hub · Connectors{% endblock %}
+{% block portal_name %}Marketing Hub{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('marketing.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('marketing.connectors') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Ad Connectors</a>
+  <a href="{{ url_for('marketing.whatsapp_inbox') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">WhatsApp Inbox</a>
+  <a href="{{ url_for('marketing.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Multi-Platform Connectors</h1>
+
+<div class="mb-4 flex gap-2">
+  {% for platform in ["meta", "tiktok", "google"] %}
+  <form method="post" action="{{ url_for('marketing.mock_connect') }}">
+    <input type="hidden" name="platform" value="{{ platform }}">
+    <button class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+      + Connect {{ platform|capitalize }} Ads
+    </button>
+  </form>
+  {% endfor %}
+</div>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Platform</th>
+        <th class="px-5 py-3">Account</th>
+        <th class="px-5 py-3">Tenant</th>
+        <th class="px-5 py-3">Status</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for a in ad_accounts %}
+      <tr>
+        <td class="px-5 py-3 font-medium capitalize">{{ a.platform }}</td>
+        <td class="px-5 py-3">{{ a.account_name }} <span class="text-slate-400">({{ a.external_account_id }})</span></td>
+        <td class="px-5 py-3">{{ a.tenant_name }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">{{ a.status }}</span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">No ad accounts connected yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="mb-3 mt-8 text-lg font-semibold text-slate-900">WhatsApp Ad Numbers Tracker</h2>
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Number</th>
+        <th class="px-5 py-3">Display Name</th>
+        <th class="px-5 py-3">Tenant</th>
+        <th class="px-5 py-3">Status</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for w in whatsapp_numbers %}
+      <tr>
+        <td class="px-5 py-3">{{ w.phone_number }}</td>
+        <td class="px-5 py-3">{{ w.display_name }}</td>
+        <td class="px-5 py-3">{{ w.tenant_name }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">{{ w.status }}</span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">No WhatsApp numbers yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

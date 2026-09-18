@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dev Portal · Task Board{% endblock %}
+{% block portal_name %}Dev Portal{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('dev_portal.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Overview</a>
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Task Board</a>
+  <a href="{{ url_for('dev_portal.projects') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Projects</a>
+  {% if g.user.role == 'developer' %}
+  <a href="{{ url_for('dev_portal.project_preview') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Preview</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Task Board</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {% for col in columns %}
+  <div class="rounded-xl bg-white p-4 shadow-sm">
+    <div class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ col.replace('_', ' ') }}</div>
+    <div class="space-y-3">
+      {% for t in tasks if t.status == col %}
+      <div class="rounded-lg border border-slate-100 p-3 text-sm">
+        <div class="font-medium text-slate-900">{{ t.title }}</div>
+        {% if t.description %}<div class="mt-1 text-slate-500">{{ t.description }}</div>{% endif %}
+        <div class="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <span>{{ t.assignee_name or "Unassigned" }}</span>
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 capitalize">{{ t.priority }}</span>
+        </div>
+        <form method="post" action="{{ url_for('dev_portal.update_task_status', task_id=t.id) }}" class="mt-2">
+          <select name="status" onchange="this.form.submit()"
+                  class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs">
+            {% for s in columns %}
+            <option value="{{ s }}" {{ "selected" if s == t.status else "" }}>{{ s.replace('_', ' ') }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      {% else %}
+      <div class="text-xs text-slate-400">Nothing here.</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ g.tenant.name }} · POS{% endblock %}
+{% block portal_name %}{{ g.tenant.name }}{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('tenant_app.dashboard', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Dashboard</a>
+  <a href="{{ url_for('tenant_app.pos', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">POS</a>
+  <a href="{{ url_for('tenant_app.inventory', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Inventory</a>
+  <a href="{{ url_for('tenant_app.fleet', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Fleet</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Point of Sale</h1>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Record a Sale</h2>
+    <form method="post" class="space-y-3">
+      <select name="item_id" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        {% for i in items %}
+        <option value="{{ i.id }}">{{ i.name }} — ${{ "%.2f"|format(i.price) }} ({{ i.quantity }} in stock)</option>
+        {% endfor %}
+      </select>
+      <input type="number" name="quantity" min="1" value="1" required
+             class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+      <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+        Checkout
+      </button>
+    </form>
+  </div>
+
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Recent Sales</h2>
+    <table class="w-full text-left text-sm">
+      <thead class="text-slate-500"><tr><th class="pb-2">Item</th><th class="pb-2">Qty</th><th class="pb-2">Total</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in recent_sales %}
+        <tr>
+          <td class="py-2">{{ s.item_name }}</td>
+          <td class="py-2">{{ s.quantity }}</td>
+          <td class="py-2">${{ "%.2f"|format(s.total) }}</td>
+        </tr>
+        {% else %}
+        <tr><td class="py-3 text-slate-400" colspan="3">No sales yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

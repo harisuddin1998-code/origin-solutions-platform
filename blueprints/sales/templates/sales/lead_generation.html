@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+{% block title %}Sales · Lead Generation{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Lead Generation</a>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .leadgen-page {
+    --bg-primary: #0a0a1a;
+    --bg-secondary: #111127;
+    --bg-card: rgba(20, 20, 45, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --text-primary: #e8e8f0;
+    --text-secondary: #9090b0;
+    --text-muted: #606080;
+    --accent-1: #6c5ce7;
+    --accent-2: #a855f7;
+    --accent-3: #ec4899;
+    --gradient-primary: linear-gradient(135deg, #6c5ce7, #a855f7, #ec4899);
+    --gradient-success: linear-gradient(135deg, #10b981, #34d399);
+    --hot: #ef4444; --warm: #f59e0b; --cold: #3b82f6;
+    --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+    --radius: 16px; --radius-sm: 10px;
+
+    position: relative;
+    overflow: hidden;
+    margin: -1.5rem -1.5rem 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #0a0a1a 0%, #111133 50%, #0a0a1a 100%);
+    color: var(--text-primary);
+  }
+  .leadgen-page * { margin: 0; padding: 0; box-sizing: border-box; }
+  .leadgen-page::before, .leadgen-page::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(100px);
+    opacity: 0.15; z-index: 0; pointer-events: none;
+  }
+  .leadgen-page::before { width: 600px; height: 600px; background: var(--accent-1); top: -200px; right: -200px; animation: leadgenFloat1 20s ease-in-out infinite; }
+  .leadgen-page::after { width: 500px; height: 500px; background: var(--accent-3); bottom: -150px; left: -150px; animation: leadgenFloat2 25s ease-in-out infinite; }
+  @keyframes leadgenFloat1 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-80px,80px); } }
+  @keyframes leadgenFloat2 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(60px,-60px); } }
+
+  .leadgen-page .container { max-width: 1440px; margin: 0 auto; padding: 24px; position: relative; z-index: 1; }
+
+  .leadgen-page .header {
+    background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px;
+    box-shadow: var(--glass-shadow); display: flex; justify-content: space-between; align-items: center;
+  }
+  .leadgen-page .header-left h1 { font-size: 26px; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .leadgen-page .header-left p { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+  .leadgen-page .version-badge { background: rgba(108,92,231,0.15); color: var(--accent-1); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(108,92,231,0.3); }
+
+  .leadgen-page .search-card {
+    background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px; box-shadow: var(--glass-shadow);
+  }
+  .leadgen-page .search-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+  .leadgen-page .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .leadgen-page .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .leadgen-page .form-group input, .leadgen-page .form-group select {
+    width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit; transition: all 0.3s ease;
+  }
+  .leadgen-page .form-group input:focus, .leadgen-page .form-group select:focus { outline: none; border-color: var(--accent-1); box-shadow: 0 0 0 3px rgba(108,92,231,0.15); }
+  .leadgen-page .form-group input::placeholder { color: var(--text-muted); }
+  .leadgen-page .form-group select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+  .leadgen-page .sources-section { margin-bottom: 20px; padding: 16px 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); }
+  .leadgen-page .sources-section h3 { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .leadgen-page .source-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .leadgen-page .source-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .leadgen-page .source-badge.active { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .leadgen-page .source-badge.optional { background: rgba(245,158,11,0.1); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); cursor: pointer; }
+  .leadgen-page .source-badge.optional.enabled { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+
+  .leadgen-page .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+  .leadgen-page .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .leadgen-page .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.1); transition: 0.3s; border-radius: 22px; }
+  .leadgen-page .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; transition: 0.3s; border-radius: 50%; }
+  .leadgen-page .toggle-switch input:checked + .toggle-slider { background: var(--accent-1); }
+  .leadgen-page .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+  .leadgen-page .api-key-input { margin-top: 12px; display: none; }
+  .leadgen-page .api-key-input.show { display: block; }
+  .leadgen-page .api-key-input input { width: 100%; max-width: 500px; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+  .leadgen-page .api-key-input input::placeholder { color: var(--text-muted); }
+  .leadgen-page .api-key-input input:focus { outline: none; border-color: var(--accent-1); }
+  .leadgen-page .api-key-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  .leadgen-page .keywords-section { margin-bottom: 20px; }
+  .leadgen-page .keywords-section label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .leadgen-page .keywords-hint { font-size: 11px; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+  .leadgen-page .keywords-input-wrapper {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+    min-height: 48px; transition: all 0.3s ease; cursor: text;
+  }
+  .leadgen-page .keywords-input-wrapper:focus-within { border-color: var(--accent-1); box-shadow: 0 0 0 3px rgba(108,92,231,0.15); }
+  .leadgen-page .keyword-tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+    background: rgba(108,92,231,0.2); border: 1px solid rgba(108,92,231,0.4);
+    border-radius: 20px; font-size: 13px; color: #c4b5fd; font-weight: 500; animation: leadgenTagIn 0.2s ease;
+  }
+  @keyframes leadgenTagIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .leadgen-page .keyword-tag .remove-tag { cursor: pointer; font-size: 14px; opacity: 0.6; transition: opacity 0.2s; }
+  .leadgen-page .keyword-tag .remove-tag:hover { opacity: 1; }
+  .leadgen-page .keywords-text-input { flex: 1; min-width: 150px; border: none; background: none; color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none; }
+  .leadgen-page .keywords-text-input::placeholder { color: var(--text-muted); }
+
+  .leadgen-page .button-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .leadgen-page .btn { padding: 12px 28px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
+  .leadgen-page .btn-primary { background: var(--gradient-primary); color: white; box-shadow: 0 4px 15px rgba(108,92,231,0.3); }
+  .leadgen-page .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(108,92,231,0.4); }
+  .leadgen-page .btn-success { background: var(--gradient-success); color: white; box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+  .leadgen-page .btn-success:hover:not(:disabled) { transform: translateY(-2px); }
+  .leadgen-page .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--glass-border); }
+  .leadgen-page .btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+  .leadgen-page .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  .leadgen-page .progress-container { margin-top: 20px; display: none; }
+  .leadgen-page .progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .leadgen-page .progress-fill { height: 100%; background: var(--gradient-primary); width: 0%; border-radius: 3px; transition: width 0.4s ease; }
+  .leadgen-page .progress-text { font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center; }
+
+  .leadgen-page .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .leadgen-page .stat-card {
+    background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 20px 18px; text-align: center; box-shadow: var(--glass-shadow); transition: all 0.3s ease;
+  }
+  .leadgen-page .stat-card:hover { transform: translateY(-4px); }
+  .leadgen-page .stat-icon { font-size: 20px; margin-bottom: 6px; }
+  .leadgen-page .stat-number { font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .leadgen-page .stat-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .leadgen-page .stat-hot .stat-number { color: var(--hot); }
+  .leadgen-page .stat-warm .stat-number { color: var(--warm); }
+  .leadgen-page .stat-cold .stat-number { color: var(--cold); }
+  .leadgen-page .stat-email .stat-number { color: #a78bfa; }
+  .leadgen-page .stat-phone .stat-number { color: #34d399; }
+  .leadgen-page .stat-web .stat-number { color: #38bdf8; }
+
+  .leadgen-page .results-card {
+    background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px; box-shadow: var(--glass-shadow); display: none;
+  }
+  .leadgen-page .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .leadgen-page .results-header h3 { font-size: 16px; font-weight: 700; }
+  .leadgen-page .results-count { font-size: 12px; color: var(--text-muted); }
+  .leadgen-page .table-wrapper { overflow-x: auto; border-radius: var(--radius-sm); }
+  .leadgen-page table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .leadgen-page thead th { background: rgba(108,92,231,0.1); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; white-space: nowrap; }
+  .leadgen-page tbody td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .leadgen-page tbody tr { transition: background 0.2s; }
+  .leadgen-page tbody tr:hover { background: rgba(108,92,231,0.06); }
+
+  .leadgen-page .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .leadgen-page .badge-hot { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .leadgen-page .badge-warm { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .leadgen-page .badge-cold { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+
+  .leadgen-page .score-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .leadgen-page .score-high { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .leadgen-page .score-mid { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .leadgen-page .score-low { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+  .leadgen-page .source-tag { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+  .leadgen-page .source-google { background: rgba(66,133,244,0.15); color: #93bbfc; }
+  .leadgen-page .source-facebook { background: rgba(24,119,242,0.15); color: #6db3f2; }
+  .leadgen-page .source-linkedin { background: rgba(10,102,194,0.15); color: #70b0e0; }
+  .leadgen-page .source-places { background: rgba(52,168,83,0.15); color: #6ecf8a; }
+
+  .leadgen-page .link-icon { color: var(--accent-2); text-decoration: none; font-weight: 600; }
+  .leadgen-page .link-icon:hover { text-decoration: underline; }
+  .leadgen-page .contact-found { color: var(--success); font-weight: 600; }
+  .leadgen-page .contact-missing { color: var(--text-muted); }
+
+  .leadgen-page .social-icons { display: flex; gap: 5px; }
+  .leadgen-page .social-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .leadgen-page .social-fb { background: #1877f2; }
+  .leadgen-page .social-ig { background: #e4405f; }
+  .leadgen-page .social-li { background: #0a66c2; }
+  .leadgen-page .social-tw { background: #1da1f2; }
+
+  .leadgen-page .logs-card { background: rgba(10,10,20,0.9); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--glass-shadow); }
+  .leadgen-page .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .leadgen-page .logs-header h3 { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+  .leadgen-page .logs-content { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; font-size: 12px; line-height: 1.8; max-height: 240px; overflow-y: auto; color: var(--success); }
+  .leadgen-page .logs-content::-webkit-scrollbar { width: 6px; }
+  .leadgen-page .logs-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  .leadgen-page .log-entry { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .leadgen-page .log-time { color: var(--text-muted); margin-right: 8px; }
+  .leadgen-page .log-warning { color: var(--warning); }
+  .leadgen-page .log-error { color: var(--error); }
+  .leadgen-page .log-success { color: var(--success); }
+  .leadgen-page .log-info { color: var(--text-secondary); }
+
+  .leadgen-page .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: leadgenSpin 0.7s linear infinite; }
+  @keyframes leadgenSpin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) { .leadgen-page .form-grid { grid-template-columns: 1fr 1fr; } .leadgen-page .header { flex-direction: column; gap: 12px; align-items: flex-start; } }
+  @media (max-width: 600px) { .leadgen-page .container { padding: 12px; } .leadgen-page .form-grid { grid-template-columns: 1fr; } .leadgen-page .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leadgen-page">
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <h1>LeadGen Pro</h1>
+        <p>Multi-Source Lead Discovery Engine &mdash; Google Search + Places API + Facebook + LinkedIn</p>
+      </div>
+      <div class="version-badge">v4.0 Multi-Source</div>
+    </div>
+
+    <div class="search-card">
+      <h2>New Search</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Country</label>
+          <select id="country">
+            <option value="USA">United States</option>
+            <option value="Canada">Canada</option>
+            <option value="UK">United Kingdom</option>
+            <option value="Australia">Australia</option>
+            <option value="Germany">Germany</option>
+            <option value="France">France</option>
+            <option value="India">India</option>
+            <option value="Pakistan">Pakistan</option>
+            <option value="UAE">United Arab Emirates</option>
+            <option value="Saudi Arabia">Saudi Arabia</option>
+            <option value="South Africa">South Africa</option>
+            <option value="Brazil">Brazil</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Spain">Spain</option>
+            <option value="Italy">Italy</option>
+            <option value="Netherlands">Netherlands</option>
+            <option value="Singapore">Singapore</option>
+            <option value="Japan">Japan</option>
+            <option value="New Zealand">New Zealand</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>City / Area</label>
+          <input type="text" id="city" placeholder="e.g. New York, London" value="">
+        </div>
+        <div class="form-group">
+          <label>Max Leads</label>
+          <select id="num_leads">
+            <option value="20">20 leads</option>
+            <option value="50" selected>50 leads</option>
+            <option value="100">100 leads</option>
+            <option value="200">200 leads</option>
+            <option value="300">300 leads</option>
+            <option value="500">500 leads</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sources-section">
+        <h3>Data Sources</h3>
+        <div class="source-row">
+          <span class="source-badge active">Google Search</span>
+          <span class="source-badge active">Facebook Pages</span>
+          <span class="source-badge active">LinkedIn Pages</span>
+          <span class="source-badge optional" id="placesToggleBadge" onclick="leadgenTogglePlaces(event)">
+            <label class="toggle-switch" style="pointer-events: none;">
+              <input type="checkbox" id="usePlaces" onchange="leadgenTogglePlacesUI()">
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="user-select: none;">Google Places API</span>
+          </span>
+        </div>
+        <div class="api-key-input" id="apiKeySection">
+          <input type="text" id="placesApiKey" placeholder="Enter your Google Places API key...">
+          <div class="api-key-hint">Get a key from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent-2);">Google Cloud Console</a> &mdash; Enable Places API</div>
+        </div>
+      </div>
+
+      <div class="keywords-section">
+        <label>Keywords <span class="keywords-hint">Press Enter or comma to add &middot; Multiple keywords = broader search</span></label>
+        <div class="keywords-input-wrapper" id="keywordsWrapper" onclick="document.getElementById('keywordInput').focus()">
+          <input type="text" class="keywords-text-input" id="keywordInput" placeholder="Type a keyword and press Enter (e.g. plumbers, dentists, restaurants)">
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="btn btn-primary" id="searchBtn" onclick="leadgenStartSearch()">Generate Leads</button>
+        <button class="btn btn-success" id="csvBtn" onclick="leadgenExportCSV()" disabled>Export CSV</button>
+        <button class="btn btn-outline" id="excelBtn" onclick="leadgenExportExcel()" disabled>Export Excel</button>
+        <button class="btn btn-outline" onclick="leadgenClearAll()">Clear</button>
+      </div>
+
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Initializing search...</div>
+      </div>
+    </div>
+
+    <div id="statsSection" style="display:none;">
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <div class="results-card" id="resultsCard">
+      <div class="results-header">
+        <h3>Discovered Leads</h3>
+        <span class="results-count" id="resultsCount"></span>
+      </div>
+      <div class="table-wrapper" id="resultsTable"></div>
+    </div>
+
+    <div class="logs-card">
+      <div class="logs-header">
+        <h3>Live Activity Log</h3>
+        <span style="font-size:11px;color:var(--text-muted);" id="logCount">0 entries</span>
+      </div>
+      <div class="logs-content" id="logsContent"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const LEADGEN_URLS = {
+    search: "{{ url_for('sales.lead_generation_search') }}",
+    logs: "{{ url_for('sales.lead_generation_logs') }}",
+    exportCsv: "{{ url_for('sales.lead_generation_export_csv') }}",
+    exportExcel: "{{ url_for('sales.lead_generation_export_excel') }}",
+  };
+
+  let leadgenKeywords = [];
+  let leadgenCurrentLeads = [];
+  let leadgenSearchActive = false;
+  let leadgenLogPollInterval = null;
+
+  const leadgenKeywordInput = document.getElementById('keywordInput');
+  leadgenKeywordInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); leadgenAddKeyword(this.value); this.value = ''; }
+    if (e.key === 'Backspace' && this.value === '' && leadgenKeywords.length > 0) leadgenRemoveKeyword(leadgenKeywords.length - 1);
+  });
+  leadgenKeywordInput.addEventListener('paste', function(e) { setTimeout(() => { this.value.split(',').forEach(p => leadgenAddKeyword(p)); this.value = ''; }, 50); });
+
+  function leadgenAddKeyword(text) { text = text.trim().replace(/,/g, ''); if (!text || leadgenKeywords.includes(text)) return; leadgenKeywords.push(text); leadgenRenderKeywords(); }
+  function leadgenRemoveKeyword(idx) { leadgenKeywords.splice(idx, 1); leadgenRenderKeywords(); }
+  function leadgenRenderKeywords() {
+    document.getElementById('keywordsWrapper').querySelectorAll('.keyword-tag').forEach(t => t.remove());
+    leadgenKeywords.forEach((kw, idx) => {
+      const tag = document.createElement('span');
+      tag.className = 'keyword-tag';
+      tag.innerHTML = kw + ' <span class="remove-tag" onclick="leadgenRemoveKeyword(' + idx + ')">x</span>';
+      document.getElementById('keywordsWrapper').insertBefore(tag, leadgenKeywordInput);
+    });
+  }
+
+  function leadgenTogglePlaces(e) {
+    const checkbox = document.getElementById('usePlaces');
+    checkbox.checked = !checkbox.checked;
+    leadgenTogglePlacesUI();
+  }
+  function leadgenTogglePlacesUI() {
+    const checked = document.getElementById('usePlaces').checked;
+    document.getElementById('apiKeySection').className = checked ? 'api-key-input show' : 'api-key-input';
+    document.getElementById('placesToggleBadge').className = checked ? 'source-badge optional enabled' : 'source-badge optional';
+  }
+
+  function leadgenAddLog(message, level = 'info') {
+    const logsDiv = document.getElementById('logsContent');
+    const time = new Date().toLocaleTimeString();
+    logsDiv.innerHTML += '<div class="log-entry log-' + level + '"><span class="log-time">[' + time + ']</span> ' + message + '</div>';
+    logsDiv.scrollTop = logsDiv.scrollHeight;
+    document.getElementById('logCount').textContent = logsDiv.children.length + ' entries';
+  }
+
+  async function leadgenPollLogs() {
+    try {
+      const resp = await fetch(LEADGEN_URLS.logs);
+      const data = await resp.json();
+      const logsDiv = document.getElementById('logsContent');
+      const currentCount = logsDiv.children.length;
+      if (data.logs.length > currentCount) {
+        for (let i = currentCount; i < data.logs.length; i++) {
+          const log = data.logs[i];
+          logsDiv.innerHTML += '<div class="log-entry log-' + log.level + '"><span class="log-time">[' + log.timestamp + ']</span> ' + log.message + '</div>';
+        }
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+        document.getElementById('logCount').textContent = data.logs.length + ' entries';
+      }
+    } catch (e) {}
+  }
+
+  async function leadgenStartSearch() {
+    if (leadgenSearchActive) return;
+    const city = document.getElementById('city').value.trim();
+    const country = document.getElementById('country').value;
+    const numLeads = document.getElementById('num_leads').value;
+    const usePlaces = document.getElementById('usePlaces').checked;
+    const apiKey = document.getElementById('placesApiKey').value.trim();
+
+    if (!city) { leadgenAddLog('Please enter a city name', 'error'); return; }
+    if (usePlaces && !apiKey) { leadgenAddLog('Please enter your Google Places API key', 'error'); return; }
+
+    const keywordsStr = leadgenKeywords.length > 0 ? leadgenKeywords.join(', ') : '';
+
+    leadgenSearchActive = true;
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Searching...';
+    document.getElementById('csvBtn').disabled = true;
+    document.getElementById('excelBtn').disabled = true;
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('resultsCard').style.display = 'none';
+    document.getElementById('statsSection').style.display = 'none';
+    document.getElementById('logsContent').innerHTML = '';
+
+    let progress = 0;
+    const progInterval = setInterval(() => {
+      if (progress < 70) { progress += 3; }
+      else if (progress < 90) { progress += 1; }
+      else if (progress < 98) { progress += 0.3; }
+      progress = Math.min(progress, 98);
+      document.getElementById('progressFill').style.width = progress + '%';
+      document.getElementById('progressText').textContent = 'Searching and extracting contacts... ' + Math.round(progress) + '%';
+    }, 500);
+
+    leadgenLogPollInterval = setInterval(leadgenPollLogs, 1000);
+
+    try {
+      let url = LEADGEN_URLS.search + '?city=' + encodeURIComponent(city) + '&country=' + encodeURIComponent(country) +
+        '&keywords=' + encodeURIComponent(keywordsStr) + '&num_leads=' + numLeads +
+        '&use_places=' + usePlaces;
+      if (usePlaces && apiKey) url += '&api_key=' + encodeURIComponent(apiKey);
+
+      const response = await fetch(url, { method: 'POST' });
+      const data = await response.json();
+
+      clearInterval(progInterval);
+      clearInterval(leadgenLogPollInterval);
+      await leadgenPollLogs();
+
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('progressText').textContent = data.success ? 'Complete! Discovered ' + data.total_leads + ' leads' : 'Search failed';
+
+      if (data.success) {
+        leadgenCurrentLeads = data.leads;
+        leadgenAddLog('Found ' + data.total_leads + ' leads!', 'success');
+        leadgenRenderStats(data.leads);
+        leadgenRenderTable(data.leads);
+        document.getElementById('statsSection').style.display = 'block';
+        document.getElementById('resultsCard').style.display = 'block';
+        document.getElementById('csvBtn').disabled = false;
+        document.getElementById('excelBtn').disabled = false;
+      } else {
+        leadgenAddLog('Search failed: ' + (data.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      clearInterval(progInterval);
+      clearInterval(leadgenLogPollInterval);
+      leadgenAddLog('Network error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Generate Leads';
+      leadgenSearchActive = false;
+      setTimeout(() => { document.getElementById('progressContainer').style.display = 'none'; }, 1500);
+    }
+  }
+
+  function leadgenRenderStats(leads) {
+    const hot = leads.filter(l => l['Lead Quality'] === 'Hot').length;
+    const warm = leads.filter(l => l['Lead Quality'] === 'Warm').length;
+    const cold = leads.filter(l => l['Lead Quality'] === 'Cold').length;
+    const hasEmail = leads.filter(l => l['Has Email'] === 'Yes').length;
+    const hasPhone = leads.filter(l => l['Has Phone'] === 'Yes').length;
+    const hasWeb = leads.filter(l => l['Has Website'] === 'Yes').length;
+    const avgScore = leads.length > 0 ? Math.round(leads.reduce((s, l) => s + (l['Lead Score'] || 0), 0) / leads.length) : 0;
+
+    document.getElementById('statsGrid').innerHTML =
+      '<div class="stat-card"><div class="stat-icon">Total</div><div class="stat-number" style="background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">' + leads.length + '</div><div class="stat-label">Total Leads</div></div>' +
+      '<div class="stat-card stat-hot"><div class="stat-icon">Hot</div><div class="stat-number">' + hot + '</div><div class="stat-label">Hot Leads</div></div>' +
+      '<div class="stat-card stat-warm"><div class="stat-icon">Warm</div><div class="stat-number">' + warm + '</div><div class="stat-label">Warm Leads</div></div>' +
+      '<div class="stat-card stat-cold"><div class="stat-icon">Cool</div><div class="stat-number">' + cold + '</div><div class="stat-label">Cold Leads</div></div>' +
+      '<div class="stat-card stat-email"><div class="stat-icon">Email</div><div class="stat-number">' + hasEmail + '</div><div class="stat-label">Have Email</div></div>' +
+      '<div class="stat-card stat-phone"><div class="stat-icon">Phone</div><div class="stat-number">' + hasPhone + '</div><div class="stat-label">Have Phone</div></div>' +
+      '<div class="stat-card stat-web"><div class="stat-icon">Web</div><div class="stat-number">' + hasWeb + '</div><div class="stat-label">Have Website</div></div>' +
+      '<div class="stat-card"><div class="stat-icon">Score</div><div class="stat-number" style="background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">' + avgScore + '</div><div class="stat-label">Avg Score</div></div>';
+  }
+
+  function leadgenRenderTable(leads) {
+    if (!leads || leads.length === 0) {
+      document.getElementById('resultsTable').innerHTML = '<p style="color:var(--text-muted);padding:20px;">No leads found.</p>';
+      return;
+    }
+    document.getElementById('resultsCount').textContent = 'Showing ' + Math.min(leads.length, 100) + ' of ' + leads.length + ' leads';
+
+    let html = '<table><thead><tr><th>#</th><th>Business</th><th>Email</th><th>Phone</th><th>Website</th><th>Category</th><th>Score</th><th>Quality</th><th>Source</th><th>Socials</th></tr></thead><tbody>';
+
+    leads.slice(0, 100).forEach((lead, idx) => {
+      const qualityClass = 'badge-' + (lead['Lead Quality'] || 'cold').toLowerCase();
+      const score = lead['Lead Score'] || 0;
+      const scoreClass = score >= 70 ? 'score-high' : (score >= 40 ? 'score-mid' : 'score-low');
+      const email = lead['Email'] && lead['Email'] !== 'N/A' ? '<span class="contact-found">' + lead['Email'] + '</span>' : '<span class="contact-missing">-</span>';
+      const phone = lead['Phone Number'] && lead['Phone Number'] !== 'N/A' ? '<span class="contact-found">' + lead['Phone Number'] + '</span>' : '<span class="contact-missing">-</span>';
+      const website = lead['Website'] ? '<a href="' + lead['Website'] + '" target="_blank" class="link-icon">' + (lead['Domain'] || '').substring(0, 25) + '</a>' : '-';
+
+      const src = lead['Source'] || '';
+      const srcClass = src.includes('Facebook') ? 'source-facebook' : src.includes('LinkedIn') ? 'source-linkedin' : src.includes('Places') ? 'source-places' : 'source-google';
+
+      let socials = '<div class="social-icons">';
+      if (lead['Facebook URL']) socials += '<span class="social-dot social-fb" title="Facebook"></span>';
+      if (lead['Instagram URL']) socials += '<span class="social-dot social-ig" title="Instagram"></span>';
+      if (lead['LinkedIn URL']) socials += '<span class="social-dot social-li" title="LinkedIn"></span>';
+      if (lead['Twitter URL']) socials += '<span class="social-dot social-tw" title="Twitter"></span>';
+      socials += '</div>';
+
+      html += '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><strong>' + (lead['Business Name'] || '-') + '</strong></td>' +
+        '<td>' + email + '</td>' +
+        '<td>' + phone + '</td>' +
+        '<td>' + website + '</td>' +
+        '<td>' + (lead['Category'] || '-') + '</td>' +
+        '<td><span class="score-pill ' + scoreClass + '">' + score + '</span></td>' +
+        '<td><span class="badge ' + qualityClass + '">' + (lead['Lead Quality'] || '-') + '</span></td>' +
+        '<td><span class="source-tag ' + srcClass + '">' + src + '</span></td>' +
+        '<td>' + socials + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    if (leads.length > 100) html += '<p style="text-align:center;margin-top:16px;color:var(--text-muted);font-size:13px;">Showing 100 of ' + leads.length + ' leads. Export to see all.</p>';
+    document.getElementById('resultsTable').innerHTML = html;
+  }
+
+  function leadgenExportCSV() { if (!leadgenCurrentLeads.length) { leadgenAddLog('No leads', 'error'); return; } leadgenAddLog('Downloading CSV...'); window.location.href = LEADGEN_URLS.exportCsv; }
+  function leadgenExportExcel() { if (!leadgenCurrentLeads.length) { leadgenAddLog('No leads', 'error'); return; } leadgenAddLog('Downloading Excel...'); window.location.href = LEADGEN_URLS.exportExcel; }
+  function leadgenClearAll() {
+    leadgenCurrentLeads = []; leadgenKeywords = []; leadgenRenderKeywords();
+    document.getElementById('resultsCard').style.display = 'none';
+    document.getElementById('statsSection').style.display = 'none';
+    document.getElementById('logsContent').innerHTML = '';
+    document.getElementById('csvBtn').disabled = true;
+    document.getElementById('excelBtn').disabled = true;
+    leadgenAddLog('Cleared all data');
+  }
+
+  leadgenAddLog('LeadGen Pro v4.0 - Ready');
+  leadgenAddLog('Sources: Google Search + Facebook + LinkedIn (always on)');
+  leadgenAddLog('Optional: Enable Google Places API for structured business data');
+</script>
+{% endblock %}

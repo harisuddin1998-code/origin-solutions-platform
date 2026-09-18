@@ -1,0 +1,4 @@
+# Only needed on the Linux server itself, to run the app in production via
+# Gunicorn (see deploy/gunicorn_originsolutions.service). Gunicorn doesn't
+# run on Windows, so this is kept out of requirements.txt.
+gunicorn==23.0.0

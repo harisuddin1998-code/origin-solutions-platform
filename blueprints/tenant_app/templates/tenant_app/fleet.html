@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ g.tenant.name }} · Fleet{% endblock %}
+{% block portal_name %}{{ g.tenant.name }}{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('tenant_app.dashboard', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Dashboard</a>
+  <a href="{{ url_for('tenant_app.pos', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">POS</a>
+  <a href="{{ url_for('tenant_app.inventory', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Inventory</a>
+  <a href="{{ url_for('tenant_app.fleet', tenant_subdomain=g.tenant.subdomain) }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Fleet</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Fleet &amp; Logistics</h1>
+
+<form method="post" class="mb-6 grid grid-cols-1 gap-3 rounded-xl bg-white p-5 shadow-sm sm:grid-cols-4">
+  <input type="text" name="name" placeholder="Vehicle name" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <input type="text" name="plate_number" placeholder="Plate number" required class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <input type="text" name="driver_name" placeholder="Driver name" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+  <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Add Vehicle</button>
+</form>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr><th class="px-5 py-3">Vehicle</th><th class="px-5 py-3">Plate</th><th class="px-5 py-3">Driver</th><th class="px-5 py-3">Status</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for v in vehicles %}
+      <tr>
+        <td class="px-5 py-3 font-medium">{{ v.name }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ v.plate_number }}</td>
+        <td class="px-5 py-3">{{ v.driver_name or "—" }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">{{ v.status }}</span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="4">No vehicles yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

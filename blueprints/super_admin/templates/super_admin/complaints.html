@@ -1,0 +1,63 @@
+{% extends "super_admin/_layout.html" %}
+{% block title %}Super Admin · Complaints{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Complaints</h1>
+
+<div class="overflow-hidden rounded-xl bg-white shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Subject</th>
+        <th class="px-5 py-3">Tenant</th>
+        <th class="px-5 py-3">Raised By</th>
+        <th class="px-5 py-3">Priority</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3">Update</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for c in complaints %}
+      <tr>
+        <td class="px-5 py-3 font-medium text-slate-900">{{ c.subject }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.tenant_name or "—" }}</td>
+        <td class="px-5 py-3 text-slate-500">{{ c.raised_by_name or "—" }}</td>
+        <td class="px-5 py-3 capitalize">{{ c.priority }}</td>
+        <td class="px-5 py-3">
+          <span class="rounded-full px-2 py-1 text-xs font-medium
+            {{ 'bg-red-100 text-red-700' if c.status == 'open'
+               else 'bg-amber-100 text-amber-700' if c.status == 'in_progress'
+               else 'bg-emerald-100 text-emerald-700' }}">
+            {{ c.status.replace('_', ' ') }}
+          </span>
+        </td>
+        <td class="px-5 py-3">
+          <form method="post" action="{{ url_for('super_admin.update_complaint_status', complaint_id=c.id) }}" class="flex gap-1">
+            <select name="status" class="rounded-md border border-slate-300 px-2 py-1 text-xs">
+              {% for s in ("open", "in_progress", "resolved") %}
+              <option value="{{ s }}" {{ "selected" if s == c.status else "" }}>{{ s.replace('_', ' ') }}</option>
+              {% endfor %}
+            </select>
+            <button class="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="px-5 py-3 text-slate-400" colspan="6">No complaints yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

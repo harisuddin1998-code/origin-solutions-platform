@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }}{% endblock %}
+{% block portal_name %}Sales &amp; Call Center{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('sales.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Funnel</a>
+  <a href="{{ url_for('sales.leads') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">All Leads</a>
+  <a href="{{ url_for('sales.companies') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Companies</a>
+  <a href="{{ url_for('sales.deals') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Deals</a>
+  <a href="{{ url_for('sales.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">My Tasks</a>
+  <a href="{{ url_for('sales.lead_generation') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Lead Generation</a>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('sales.companies') }}" class="text-sm text-indigo-600 hover:underline">&larr; All Companies</a>
+<h1 class="mt-1 mb-1 text-2xl font-semibold text-slate-900">{{ company.name }}</h1>
+<p class="mb-6 text-sm text-slate-500">
+  {{ company.industry or "—" }}
+  {% if company.tenant_subdomain %} · Client at
+  <a class="text-indigo-600 hover:underline" href="{{ url_for('tenant_app.dashboard', tenant_subdomain=company.tenant_subdomain) }}" target="_blank">/t/{{ company.tenant_subdomain }}</a>
+  {% endif %}
+</p>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Contacts</h2>
+    <ul class="space-y-2 text-sm">
+      {% for c in contacts %}
+      <li class="flex items-center justify-between">
+        <span>{{ c.name }} <span class="text-slate-400">({{ c.job_title or "—" }})</span></span>
+        <span class="text-slate-500">{{ c.email or c.phone or "" }}</span>
+      </li>
+      {% else %}
+      <li class="text-slate-400">No contacts yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="rounded-xl bg-white p-5 shadow-sm">
+    <h2 class="mb-3 text-lg font-semibold text-slate-900">Deals</h2>
+    <ul class="space-y-2 text-sm">
+      {% for d in deals %}
+      <li>
+        <a href="{{ url_for('sales.deal_detail', deal_id=d.id) }}" class="text-indigo-600 hover:underline">{{ d.name }}</a>
+        <span class="text-slate-400">— ${{ "%.2f"|format(d.amount) }} · {{ d.stage.replace('_', ' ') }}</span>
+      </li>
+      {% else %}
+      <li class="text-slate-400">No deals yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="mt-6 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-lg font-semibold text-slate-900">Invoices</h2>
+  <table class="w-full text-left text-sm">
+    <thead class="text-slate-500"><tr><th class="pb-2">Number</th><th class="pb-2">Total</th><th class="pb-2">Status</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for i in invoices %}
+      <tr>
+        <td class="py-2">{{ i.number }}</td>
+        <td class="py-2">${{ "%.2f"|format(i.total) }}</td>
+        <td class="py-2 capitalize">{{ i.status }}</td>
+      </tr>
+      {% else %}
+      <tr><td class="py-3 text-slate-400" colspan="3">No invoices yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

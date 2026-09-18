@@ -1,0 +1,29 @@
+# config/config.yaml
+scraping:
+  concurrent_searches: 5
+  businesses_per_search: 500
+  request_delay_min: 1
+  request_delay_max: 3
+  max_retries: 3
+  
+proxy:
+  enabled: false
+  rotation_interval: 60
+  proxy_list: []
+  
+database:
+  type: sqlite  # sqlite or postgresql
+  sqlite_path: ./leads.db
+  # postgresql_url: postgresql://user:pass@localhost/dbname
+  
+rate_limiting:
+  enabled: true
+  requests_per_minute: 30
+  
+ai:
+  openai_api_key: ${OPENAI_API_KEY}
+  enable_email_generation: true
+  
+export:
+  excel_formatting: true
+  auto_export_directory: ./exports

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Origin Solutions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    .login-fallback-bg { background: #020617; }
+    @keyframes login-card-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .login-card { animation: login-card-in 0.5s ease-out; }
+  </style>
+</head>
+<body class="h-full bg-slate-950 login-fallback-bg">
+  <div class="relative min-h-screen overflow-hidden">
+    <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline
+           poster="{{ url_for('static', filename='images/logo-origins.png') }}">
+      <source src="{{ url_for('static', filename='video/hero-loop.mp4') }}" type="video/mp4">
+    </video>
+    <div class="absolute inset-0 bg-slate-950/60"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-slate-950/50"></div>
+
+    <!-- Logo -->
+    <div class="relative z-10 flex items-center gap-3 p-8">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-950/50">OS</div>
+      <span class="text-xl font-semibold tracking-wide text-white">Origin Solutions</span>
+    </div>
+
+    <!-- Login card -->
+    <div class="relative z-10 flex items-center justify-center px-6 pb-16 pt-4 sm:pt-8">
+      <div class="w-full max-w-sm">
+        <div class="login-card rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
+          <h1 class="mb-1 text-xl font-semibold text-white">Sign in</h1>
+          <p class="mb-6 text-sm text-slate-200">Platform &amp; Software House Management System</p>
+
+          {% if error %}
+          <div class="mb-4 rounded-lg border border-red-300/30 bg-red-500/20 px-4 py-2 text-sm text-red-100">{{ error }}</div>
+          {% endif %}
+
+          <form method="post" class="space-y-4">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-100">Username</label>
+              <input type="text" name="email" required autofocus
+                     class="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-300 transition focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/20" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-100">Password</label>
+              <input type="password" name="password" required
+                     class="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-300 transition focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/20" />
+            </div>
+            <button type="submit"
+                    class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-950/40 transition hover:bg-indigo-500 hover:shadow-indigo-900/50">
+              Sign in
+            </button>
+          </form>
+
+        </div>
+
+        <p class="mt-6 text-center text-xs text-slate-300">&copy; Origin Solutions</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

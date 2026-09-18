@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Developer Portal{% endblock %}
+{% block portal_name %}Dev Portal{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('dev_portal.dashboard') }}" class="block rounded-lg bg-indigo-500/15 px-3 py-2 font-medium text-white ring-1 ring-inset ring-indigo-400/30">Overview</a>
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Task Board</a>
+  <a href="{{ url_for('dev_portal.projects') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Projects</a>
+  {% if g.user.role == 'developer' %}
+  <a href="{{ url_for('dev_portal.project_preview') }}" class="block rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">Preview</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-6 text-2xl font-semibold text-slate-900">Developer Portal</h1>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Open Tasks</div>
+    <div class="mt-1 text-3xl font-semibold text-slate-900">{{ stats.open_tasks }}</div>
+  </a>
+  <a href="{{ url_for('dev_portal.tasks') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Awaiting QC</div>
+    <div class="mt-1 text-3xl font-semibold text-amber-600">{{ stats.in_qc }}</div>
+  </a>
+  <a href="{{ url_for('dev_portal.projects') }}" class="block rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md hover:ring-1 hover:ring-indigo-200">
+    <div class="text-sm text-slate-500">Connected Repos</div>
+    <div class="mt-1 text-3xl font-semibold text-indigo-600">{{ stats.connected_repos }}</div>
+  </a>
+</div>
+
+<p class="mt-6 text-sm text-slate-500">
+  Connect a project to its GitHub repo from the project page — every real <code>git push</code> shows up in QC's
+  queue automatically.
+</p>
+
+{% include "_api_tokens.html" %}
+{% endblock %}

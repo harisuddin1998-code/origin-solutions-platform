@@ -1,0 +1,3 @@
+# Only needed to run deploy/pythonanywhere.py from your local machine -
+# not required by the running Flask app itself.
+requests==2.32.3
