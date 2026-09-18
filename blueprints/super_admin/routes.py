@@ -1,4 +1,5 @@
 import os
+import re
 
 from flask import (
     Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
@@ -7,8 +8,10 @@ from flask import (
 from core.auth import guard_role
 from core.db import execute, query
 from crm.helpers import get_agency_revenue_summary, get_financial_report, record_payment
-from projects import webapp_ops
-from projects.dockerize import DockerizeError
+from projects import vps_deploy, webapp_ops, wizard
+from projects.dockerize import (
+    DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_stack,
+)
 from projects.github import create_project_from_repo
 from projects.helpers import deploy_project, pause_project, resume_project, set_live_url
 from projects.teardown import teardown_project
@@ -274,6 +277,156 @@ def webapps():
 @bp.route("/webapps/<int:project_id>")
 def webapp_detail(project_id):
     return render_template("super_admin/webapps.html", **_webapp_context(project_id))
+
+
+# ------------------------------------------------- new web app wizard
+# Shaped like PythonAnywhere's "Add a new web app": pick where the code comes
+# from, confirm the address and what was detected, then deploy and watch the
+# steps. The two sources (GitHub / uploaded zip) converge after step 1 - both
+# leave the code in CLIENT_APPS_DIR/<id> and share every step after that.
+
+def _repo_dir(project_id):
+    return os.path.join(current_app.config["CLIENT_APPS_DIR"], str(project_id))
+
+
+@bp.route("/webapps/new")
+def webapp_new():
+    return render_template("super_admin/webapp_new.html", step=1)
+
+
+@bp.route("/webapps/new", methods=["POST"])
+def webapp_new_source():
+    """Step 1: create the project and get its code onto the server."""
+    source = request.form.get("source")
+    name = (request.form.get("name") or "").strip()
+    subdomain = request.form.get("subdomain") or ""
+
+    try:
+        if source == "github":
+            repo = (request.form.get("github_repo") or "").strip().strip("/")
+            repo = re.sub(r"^https?://github\.com/", "", repo).removesuffix(".git")
+            if "/" not in repo:
+                raise wizard.WizardError("Enter the repo as owner/repo, e.g. sheikhharis-gif/MIB.")
+            branch = (request.form.get("branch") or "").strip()
+            project_id = wizard.create_project(
+                name or repo.split("/")[-1], subdomain or repo.split("/")[-1],
+                github_repo=repo, branch=branch,
+            )
+            try:
+                vps_deploy._fetch_repo(_repo_dir(project_id), f"https://github.com/{repo}.git",
+                                       branch or None)
+            except Exception as exc:
+                execute("DELETE FROM projects WHERE id = %s", (project_id,))
+                detail = getattr(exc, "stderr", None) or str(exc)
+                raise wizard.WizardError(
+                    f"Could not clone {repo}. Check the name, the branch, and that the repo "
+                    f"is public.\n\n{detail}"
+                )
+
+        elif source == "upload":
+            upload = request.files.get("archive")
+            if not upload or not upload.filename:
+                raise wizard.WizardError("Choose a .zip file to upload.")
+            if not name:
+                name = os.path.splitext(os.path.basename(upload.filename))[0]
+            project_id = wizard.create_project(name, subdomain or name)
+            try:
+                wizard.extract_zip(upload, _repo_dir(project_id))
+            except Exception:
+                execute("DELETE FROM projects WHERE id = %s", (project_id,))
+                raise
+        else:
+            raise wizard.WizardError("Pick where the code is coming from.")
+
+    except wizard.WizardError as exc:
+        return render_template("super_admin/webapp_new.html", step=1, error=str(exc),
+                               form=request.form)
+
+    return redirect(url_for("super_admin.webapp_new_configure", project_id=project_id))
+
+
+@bp.route("/webapps/new/<int:project_id>/configure")
+def webapp_new_configure(project_id):
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    repo_dir = _repo_dir(project_id)
+    stack = detect_stack(repo_dir, project.get("main_file_path"), project.get("start_command"))
+    try:
+        listing = sorted(os.listdir(repo_dir))[:40]
+    except OSError:
+        listing = []
+
+    return render_template(
+        "super_admin/webapp_new.html",
+        step=2,
+        project=project,
+        domain=current_app.config["DEPLOY_DOMAIN"],
+        stack=stack,
+        stack_label=STACK_LABELS.get(stack),
+        detect_failed_message=DETECT_FAILED_MESSAGE,
+        listing=listing,
+        repo_dir=repo_dir,
+    )
+
+
+@bp.route("/webapps/new/<int:project_id>/configure", methods=["POST"])
+def webapp_new_configure_save(project_id):
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    def clean(field):
+        return (request.form.get(field) or "").strip() or None
+
+    subdomain = wizard.normalize_subdomain(request.form.get("subdomain"))
+    if not subdomain:
+        flash("The address can't be empty.", "error")
+        return redirect(url_for("super_admin.webapp_new_configure", project_id=project_id))
+    if wizard.subdomain_taken(subdomain, exclude_project_id=project_id):
+        flash(f"{subdomain} is already taken by another app.", "error")
+        return redirect(url_for("super_admin.webapp_new_configure", project_id=project_id))
+
+    execute(
+        """UPDATE projects
+              SET name = %s, subdomain = %s, main_file_path = %s,
+                  start_command = %s, data_mount_path = %s
+            WHERE id = %s""",
+        ((request.form.get("name") or project["name"]).strip(), subdomain,
+         clean("main_file_path"), clean("start_command"), clean("data_mount_path"),
+         project_id),
+    )
+    return redirect(url_for("super_admin.webapp_new_deploy", project_id=project_id))
+
+
+@bp.route("/webapps/new/<int:project_id>/deploy", methods=["GET", "POST"])
+def webapp_new_deploy(project_id):
+    """Step 3: the deploy itself. GET previews the plan (dry run), POST runs it."""
+    project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    if not project:
+        abort(404)
+
+    ctx = {
+        "step": 3,
+        "project": project,
+        "domain": current_app.config["DEPLOY_DOMAIN"],
+    }
+
+    if request.method == "GET":
+        try:
+            ctx["plan"] = execute_deploy(project_id, dry_run=True)
+        except Exception as exc:
+            ctx["error"] = str(exc)
+        return render_template("super_admin/webapp_new.html", **ctx)
+
+    try:
+        result = execute_deploy(project_id)
+        ctx["result"] = result
+        ctx["project"] = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+    except Exception as exc:
+        ctx["error"] = str(exc)
+    return render_template("super_admin/webapp_new.html", **ctx)
 
 
 @bp.route("/webapps/<int:project_id>/console", methods=["POST"])

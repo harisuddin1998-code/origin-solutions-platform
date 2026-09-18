@@ -171,9 +171,6 @@ def build_deploy_plan(project):
     argv/custom_action is None for steps that write a file or shell out via a
     plain lambda rather than a single argv command. Nothing is executed
     here."""
-    if not project.get("github_repo"):
-        raise ValueError("Project has no github_repo set - nothing to deploy.")
-
     domain = current_app.config["DEPLOY_DOMAIN"]
     apps_dir = current_app.config["CLIENT_APPS_DIR"]
     data_dir = os.path.join(current_app.config["CLIENT_DATA_DIR"], str(project["id"]))
@@ -192,13 +189,27 @@ def build_deploy_plan(project):
     if branch:
         fetch_description += f" (branch: {branch})"
 
+    # A project uploaded as a zip has no repo to pull from - its code was
+    # written straight into repo_dir when it was created, and a redeploy
+    # rebuilds from whatever is sitting there now. Everything after this
+    # step is identical either way.
+    if project.get("github_repo"):
+        fetch_step = (fetch_description, None, lambda: _fetch_repo(repo_dir, repo_url, branch))
+    elif os.path.isdir(repo_dir):
+        fetch_step = (f"Use uploaded code already at {repo_dir}", None, lambda: None)
+    else:
+        raise ValueError(
+            f"{project['name']} has no GitHub repo and no uploaded code at {repo_dir} "
+            "- nothing to deploy."
+        )
+
     steps = [
         (
             f"Back up existing data for {project['name']} before redeploying",
             None,
             lambda: _backup_data_dir(data_dir, project["id"]),
         ),
-        (fetch_description, None, lambda: _fetch_repo(repo_dir, repo_url, branch)),
+        fetch_step,
         (
             "Ensure a Dockerfile exists at repo root (auto-generated if missing)",
             None,

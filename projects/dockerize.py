@@ -28,44 +28,97 @@ class DockerizeError(RuntimeError):
     pass
 
 
+# Human-readable name for each stack detect_stack() can return, for the
+# "we detected X" line in the new-web-app wizard.
+STACK_LABELS = {
+    "dockerfile": "Dockerfile in the repo (used as-is)",
+    "manual": "Custom start command",
+    "django": "Django",
+    "streamlit": "Streamlit",
+    "fastapi": "FastAPI",
+    "node": "Node.js",
+    "flask": "Flask",
+    "php": "PHP",
+    "ruby": "Ruby",
+    "go": "Go",
+    "static": "Static site (HTML/CSS/JS)",
+}
+
+DETECT_FAILED_MESSAGE = (
+    "Could not auto-detect this project's stack. Set 'Main file path' "
+    "or a full 'Start command' in Advanced settings, or add a "
+    "Dockerfile to the repo root (it must listen on port 8000), and "
+    "redeploy."
+)
+
+
+def detect_stack(repo_dir, main_file_path=None, start_command=None):
+    """Which stack this checkout looks like, as a key of STACK_LABELS.
+
+    Returns None when nothing matches. Writes nothing - the wizard calls
+    this to show what it found before committing to a deploy, and
+    ensure_dockerfile() dispatches on the same answer so the preview cannot
+    drift from what actually gets built.
+    """
+    if os.path.isfile(os.path.join(repo_dir, "Dockerfile")):
+        return "dockerfile"
+    if start_command:
+        return "manual"
+    if os.path.isfile(os.path.join(repo_dir, "manage.py")):
+        return "django"
+    if _requirements_contains(repo_dir, "streamlit"):
+        return "streamlit"
+    if _requirements_contains(repo_dir, "fastapi"):
+        return "fastapi"
+    if os.path.isfile(os.path.join(repo_dir, "package.json")):
+        return "node"
+    if os.path.isfile(os.path.join(repo_dir, "requirements.txt")) and (
+        main_file_path or _find_flask_entry(repo_dir)
+    ):
+        return "flask"
+    if os.path.isfile(os.path.join(repo_dir, "composer.json")) or os.path.isfile(
+        os.path.join(repo_dir, "index.php")
+    ):
+        return "php"
+    if os.path.isfile(os.path.join(repo_dir, "Gemfile")):
+        return "ruby"
+    if os.path.isfile(os.path.join(repo_dir, "go.mod")):
+        return "go"
+    if os.path.isfile(os.path.join(repo_dir, "index.html")):
+        return "static"
+    return None
+
+
 def ensure_dockerfile(repo_dir, main_file_path=None, start_command=None):
     """Writes a Dockerfile at the repo root if one isn't already there.
     Raises DockerizeError if the stack can't be confidently detected and no
     override was given."""
-    if os.path.isfile(os.path.join(repo_dir, "Dockerfile")):
-        return
+    stack = detect_stack(repo_dir, main_file_path, start_command)
 
-    if start_command:
+    if stack == "dockerfile":
+        return
+    if stack == "manual":
         _write_manual(repo_dir, start_command)
-    elif os.path.isfile(os.path.join(repo_dir, "manage.py")):
+    elif stack == "django":
         _write_django(repo_dir)
-    elif _requirements_contains(repo_dir, "streamlit"):
+    elif stack == "streamlit":
         _write_streamlit(repo_dir, main_file_path)
-    elif _requirements_contains(repo_dir, "fastapi"):
+    elif stack == "fastapi":
         _write_fastapi(repo_dir, main_file_path)
-    elif os.path.isfile(os.path.join(repo_dir, "package.json")):
+    elif stack == "node":
         _write_node(repo_dir)
-    elif os.path.isfile(os.path.join(repo_dir, "requirements.txt")) and (
-        main_file_path or _find_flask_entry(repo_dir)
-    ):
+    elif stack == "flask":
         _write_flask(repo_dir, main_file_path)
-    elif os.path.isfile(os.path.join(repo_dir, "composer.json")) or os.path.isfile(
-        os.path.join(repo_dir, "index.php")
-    ):
+    elif stack == "php":
         _write_php(repo_dir)
-    elif os.path.isfile(os.path.join(repo_dir, "Gemfile")):
+    elif stack == "ruby":
         _write_ruby(repo_dir)
-    elif os.path.isfile(os.path.join(repo_dir, "go.mod")):
+    elif stack == "go":
         _write_go(repo_dir, main_file_path)
-    elif os.path.isfile(os.path.join(repo_dir, "index.html")):
+    elif stack == "static":
         _write_static(repo_dir)
     else:
-        raise DockerizeError(
-            "Could not auto-detect this project's stack. Set 'Main file path' "
-            "or a full 'Start command' in Advanced settings, or add a "
-            "Dockerfile to the repo root (it must listen on port 8000), and "
-            "redeploy."
-        )
+        raise DockerizeError(DETECT_FAILED_MESSAGE)
 
 
 def _requirements_contains(repo_dir, package_name):

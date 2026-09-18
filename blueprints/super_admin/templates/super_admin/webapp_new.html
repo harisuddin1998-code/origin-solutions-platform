@@ -1,0 +1,288 @@
+{% extends "super_admin/_layout.html" %}
+
+{% block title %}Add a new web app{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.webapps') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Web Apps</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+
+  <h1 class="admin-heading text-2xl font-semibold text-slate-900">Add a new web app</h1>
+
+  {# ------------------------------------------------- step indicator #}
+  <ol class="mt-5 flex items-center gap-2 text-sm">
+    {% for n, label in [(1, 'Where is the code?'), (2, 'Address & settings'), (3, 'Deploy')] %}
+      <li class="flex items-center gap-2">
+        <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold
+                     {{ 'bg-violet-600 text-white' if step == n
+                        else ('bg-emerald-500 text-white' if step > n else 'bg-slate-200 text-slate-500') }}">
+          {{ '✓' if step > n else n }}
+        </span>
+        <span class="{{ 'font-medium text-slate-900' if step == n else 'text-slate-400' }}">{{ label }}</span>
+      </li>
+      {% if not loop.last %}<li class="h-px w-6 bg-slate-200"></li>{% endif %}
+    {% endfor %}
+  </ol>
+
+  {% if error %}
+    <div class="mt-5 rounded-lg border-l-4 border-red-400 bg-red-50 p-4">
+      <div class="text-sm font-medium text-red-800">That didn't work</div>
+      <pre class="mt-1.5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-red-700">{{ error }}</pre>
+    </div>
+  {% endif %}
+
+  {# ================================================== STEP 1: source #}
+  {% if step == 1 %}
+  <p class="mt-5 text-sm text-slate-500">
+    Two ways to get an app onto the server. Either one ends up in the same place.
+  </p>
+
+  <div class="mt-5 space-y-4">
+
+    {# --- from GitHub --- #}
+    <form method="post" action="{{ url_for('super_admin.webapp_new_source') }}"
+          class="rounded-xl bg-white p-5 shadow-sm">
+      <input type="hidden" name="source" value="github">
+      <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm text-white">⎇</div>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-base font-semibold text-slate-900">From GitHub</h2>
+          <p class="mt-0.5 text-sm text-slate-500">
+            Best option: every later push can be pulled live with one click.
+          </p>
+
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label class="block sm:col-span-2">
+              <span class="text-xs font-medium text-slate-600">Repository</span>
+              <input name="github_repo" required placeholder="owner/repo"
+                     value="{{ form.github_repo if form else '' }}"
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+              <span class="mt-1 block text-xs text-slate-400">
+                Paste <span class="font-mono">owner/repo</span> or the full GitHub URL. The repo must be public.
+              </span>
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-slate-600">Branch <span class="text-slate-400">(optional)</span></span>
+              <input name="branch" placeholder="default branch"
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-slate-600">App name <span class="text-slate-400">(optional)</span></span>
+              <input name="name" placeholder="taken from the repo name"
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+            </label>
+          </div>
+
+          <button class="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">
+            Next →
+          </button>
+        </div>
+      </div>
+    </form>
+
+    {# --- upload a zip --- #}
+    <form method="post" action="{{ url_for('super_admin.webapp_new_source') }}"
+          enctype="multipart/form-data" class="rounded-xl bg-white p-5 shadow-sm">
+      <input type="hidden" name="source" value="upload">
+      <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-sm text-white">↑</div>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-base font-semibold text-slate-900">Upload from your computer</h2>
+          <p class="mt-0.5 text-sm text-slate-500">
+            For code that isn't on GitHub. Zip the project folder and upload it.
+          </p>
+
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label class="block sm:col-span-2">
+              <span class="text-xs font-medium text-slate-600">Project .zip</span>
+              <input type="file" name="archive" accept=".zip" required
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700">
+              <span class="mt-1 block text-xs text-slate-400">
+                Up to 200 MB. Delete <span class="font-mono">venv/</span> and
+                <span class="font-mono">node_modules/</span> before zipping — they get rebuilt on the server anyway.
+              </span>
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-slate-600">App name <span class="text-slate-400">(optional)</span></span>
+              <input name="name" placeholder="taken from the file name"
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+            </label>
+          </div>
+
+          <button class="mt-4 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600">
+            Upload &amp; continue →
+          </button>
+          <p class="mt-2 text-xs text-slate-400">
+            Uploaded code has nothing to pull from later — to change it, upload again.
+          </p>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {# =========================================== STEP 2: address/config #}
+  {% if step == 2 %}
+  <form method="post" action="{{ url_for('super_admin.webapp_new_configure_save', project_id=project.id) }}"
+        class="mt-5 space-y-4">
+
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Address</h2>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-xs font-medium text-slate-600">App name</span>
+          <input name="name" value="{{ project.name }}" required
+                 class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium text-slate-600">Web address</span>
+          <div class="mt-1 flex items-center">
+            <input name="subdomain" value="{{ project.subdomain }}" required
+                   class="w-full min-w-0 rounded-l-lg border border-r-0 border-slate-200 px-3 py-2 text-right font-mono text-xs focus:border-violet-400 focus:outline-none">
+            <span class="shrink-0 rounded-r-lg border border-l-0 border-slate-200 bg-slate-50 px-2 py-2 font-mono text-xs text-slate-500">.{{ domain }}</span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">What we found</h2>
+      {% if stack %}
+        <div class="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5">
+          <span class="text-emerald-600">✓</span>
+          <span class="text-sm text-emerald-800">
+            Detected <strong>{{ stack_label }}</strong> — the server will build it for you, no setup needed.
+          </span>
+        </div>
+      {% else %}
+        <div class="mt-3 rounded-lg bg-amber-50 px-3 py-2.5">
+          <div class="text-sm font-medium text-amber-800">Couldn't work out the framework</div>
+          <p class="mt-1 text-xs leading-relaxed text-amber-700">{{ detect_failed_message }}</p>
+        </div>
+      {% endif %}
+
+      {% if listing %}
+      <div class="mt-3">
+        <div class="text-xs font-medium text-slate-600">Files uploaded</div>
+        <div class="mt-1.5 flex flex-wrap gap-1">
+          {% for f in listing %}
+            <span class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{{ f }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <details {% if not stack %}open{% endif %}>
+        <summary class="cursor-pointer text-base font-semibold text-slate-900">
+          Advanced settings
+          <span class="ml-1 text-xs font-normal text-slate-400">— only needed if detection got it wrong</span>
+        </summary>
+        <div class="mt-3 space-y-3 border-t border-slate-100 pt-3">
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">Main file</span>
+            <input name="main_file_path" value="{{ project.main_file_path or '' }}" placeholder="e.g. app.py"
+                   class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">Start command</span>
+            <input name="start_command" value="{{ project.start_command or '' }}"
+                   placeholder="overrides detection entirely — must listen on port 8000"
+                   class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">Persistent data path</span>
+            <input name="data_mount_path" value="{{ project.data_mount_path or '' }}" placeholder="/data"
+                   class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+            <span class="mt-1 block text-xs text-slate-400">
+              Where this app keeps data that must survive a rebuild — e.g.
+              <span class="font-mono">/app/app.db</span>. Comma-separate more than one.
+            </span>
+          </label>
+        </div>
+      </details>
+    </section>
+
+    <div class="flex items-center gap-3">
+      <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">
+        Next →
+      </button>
+      <a href="{{ url_for('super_admin.webapp_new') }}" class="text-sm text-slate-500 hover:text-slate-700">Start over</a>
+    </div>
+  </form>
+  {% endif %}
+
+  {# ================================================== STEP 3: deploy #}
+  {% if step == 3 %}
+
+    {% if result %}
+      <div class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+        <div class="text-lg font-semibold text-emerald-900">It's live 🎉</div>
+        <a href="{{ result.live_url }}" target="_blank" rel="noopener"
+           class="mt-1 inline-block break-all font-mono text-sm text-emerald-700 underline">{{ result.live_url }}</a>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="{{ url_for('super_admin.webapp_detail', project_id=project.id) }}"
+             class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            Open its control panel
+          </a>
+          <a href="{{ url_for('super_admin.webapp_new') }}"
+             class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            Add another
+          </a>
+        </div>
+      </div>
+
+    {% elif plan %}
+      <section class="mt-5 rounded-xl bg-white p-5 shadow-sm">
+        <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Ready to deploy</h2>
+        <p class="mt-2 text-sm text-slate-500">
+          <span class="font-medium text-slate-900">{{ project.name }}</span> will go live at
+          <span class="font-mono text-xs">{{ plan.context.server_name }}</span>. These are the steps:
+        </p>
+        <ol class="mt-3 space-y-1.5">
+          {% for s in plan.steps %}
+            <li class="flex gap-2.5 text-sm">
+              <span class="w-5 shrink-0 text-right text-xs text-slate-400">{{ loop.index }}.</span>
+              <span class="text-slate-700">{{ s.description }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+        <form method="post" class="mt-4 flex items-center gap-3">
+          <button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            Deploy now
+          </button>
+          <a href="{{ url_for('super_admin.webapp_new_configure', project_id=project.id) }}"
+             class="text-sm text-slate-500 hover:text-slate-700">← Back to settings</a>
+        </form>
+        <p class="mt-2 text-xs text-slate-400">This takes a minute or two — the page will wait.</p>
+      </section>
+
+    {% else %}
+      <div class="mt-5 flex flex-wrap gap-2">
+        <a href="{{ url_for('super_admin.webapp_new_configure', project_id=project.id) }}"
+           class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          ← Back to settings
+        </a>
+        <form method="post">
+          <button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            Try deploying again
+          </button>
+        </form>
+      </div>
+    {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}

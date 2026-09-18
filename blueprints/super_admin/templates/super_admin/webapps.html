@@ -18,8 +18,11 @@
 {% block content %}
 {% if not project %}
   <h1 class="admin-heading mb-2 text-2xl font-semibold text-slate-900">Web Apps</h1>
-  <p class="text-sm text-slate-500">No projects yet. Add one from the
-    <a href="{{ url_for('super_admin.projects') }}" class="text-violet-600 hover:underline">Projects</a> page.</p>
+  <p class="text-sm text-slate-500">No web apps yet.</p>
+  <a href="{{ url_for('super_admin.webapp_new') }}"
+     class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">
+    + Add a new web app
+  </a>
 {% else %}
 
 <div class="flex gap-6">
@@ -39,7 +42,7 @@
         </a>
       {% endfor %}
     </nav>
-    <a href="{{ url_for('super_admin.projects') }}"
+    <a href="{{ url_for('super_admin.webapp_new') }}"
        class="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-violet-600 hover:bg-violet-50">
       <span class="text-base leading-none">+</span> Add a new web app
     </a>
