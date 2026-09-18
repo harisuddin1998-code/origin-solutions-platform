@@ -156,6 +156,18 @@
           </dd>
         </div>
         <div class="flex gap-3">
+          <dt class="w-36 shrink-0 text-slate-500">Running commit</dt>
+          <dd class="min-w-0">
+            {% if commit %}
+              <span class="font-mono text-xs font-medium text-slate-900">{{ commit.sha }}</span>
+              <span class="text-xs text-slate-600">{{ commit.message }}</span>
+              <span class="text-xs text-slate-400">· {{ commit.when }}</span>
+            {% else %}
+              <span class="text-xs text-slate-400">uploaded code — no commit history</span>
+            {% endif %}
+          </dd>
+        </div>
+        <div class="flex gap-3">
           <dt class="w-36 shrink-0 text-slate-500">Source on server</dt>
           <dd class="min-w-0 break-all font-mono text-xs text-slate-700">{{ source_dir }}</dd>
         </div>

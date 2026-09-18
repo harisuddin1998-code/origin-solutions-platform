@@ -70,6 +70,43 @@ def wire_up_subdomain(subdomain, domain):
     ensure_tunnel_route(f"{subdomain}.{domain}")
 
 
+def purge_cache(hostname):
+    """Drops Cloudflare's cached copies of a site, right after it redeploys.
+
+    Without this a redeploy looks like it did nothing. Cloudflare caches
+    static assets at the edge and rewrites the browser's Cache-Control along
+    the way - this zone hands out max-age=14400 even though the origin says
+    no-cache - so a pushed CSS or JS change stays invisible for hours while
+    the app itself is perfectly up to date.
+
+    Purging by hostname is an Enterprise-only feature, so fall back to
+    purging the whole zone when the API refuses it. That is heavier than it
+    needs to be (every project's assets get re-fetched once) but it is
+    correct, and the alternative is shipping changes nobody can see.
+
+    Never raises: a deploy that worked should not be reported as failed
+    because a cache purge didn't.
+    """
+    zone_id = current_app.config.get("CLOUDFLARE_ZONE_ID")
+    if not zone_id:
+        return False, "No Cloudflare zone configured - skipped."
+
+    url = f"{API_BASE}/zones/{zone_id}/purge_cache"
+    try:
+        resp = requests.post(url, headers=_headers(), json={"hosts": [hostname]}, timeout=20)
+        data = resp.json()
+        if data.get("success"):
+            return True, f"Purged Cloudflare cache for {hostname}."
+
+        resp = requests.post(url, headers=_headers(), json={"purge_everything": True}, timeout=20)
+        data = resp.json()
+        if data.get("success"):
+            return True, "Purged the whole Cloudflare zone cache (per-host purge needs Enterprise)."
+        return False, f"Cloudflare would not purge the cache: {data.get('errors')}"
+    except requests.RequestException as exc:
+        return False, f"Could not reach Cloudflare to purge the cache: {exc}"
+
+
 def remove_dns_record(subdomain, domain):
     zone_id = current_app.config["CLOUDFLARE_ZONE_ID"]
 

@@ -39,7 +39,7 @@ from datetime import datetime
 from flask import current_app
 
 from core.db import execute, query
-from projects.cloudflare import wire_up_subdomain
+from projects.cloudflare import purge_cache, wire_up_subdomain
 from projects.dockerize import ensure_dockerfile
 
 CONTAINER_PORT = 8000
@@ -238,6 +238,11 @@ def build_deploy_plan(project):
             None,
             lambda: wire_up_subdomain(subdomain, domain),
         ),
+        (
+            f"Purge cached copies of {server_name} so the new code is what visitors get",
+            None,
+            lambda: purge_cache(server_name),
+        ),
     ]
     context = {"port": port, "container": container, "server_name": server_name, "domain": domain}
     return steps, context
@@ -293,6 +298,25 @@ def _write_nginx_config(site_conf_path, site_enabled_path, subdomain, domain, po
         os.symlink(site_conf_path, site_enabled_path)
 
 
+
+def _head_commit(repo_dir):
+    """The commit that just went live, so "did my push actually deploy?" is
+    answerable from the button's own result instead of by guessing. None for
+    an uploaded project, which has no commits to report."""
+    if not os.path.isdir(os.path.join(repo_dir, ".git")):
+        return None
+    try:
+        proc = subprocess.run(
+            ["git", "-C", repo_dir, "log", "-1", "--format=%h%s%cr"],
+            capture_output=True, text=True, timeout=10, check=True,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    parts = proc.stdout.strip().split("")
+    if len(parts) != 3 or not parts[0]:
+        return None
+    return {"sha": parts[0], "message": parts[1], "when": parts[2]}
+
 def execute_deploy(project_id, dry_run=False):
     project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
     if not project:
@@ -324,7 +348,14 @@ def execute_deploy(project_id, dry_run=False):
             "UPDATE deployments SET status = 'deployed' WHERE project_id = %s AND status = 'approved'",
             (project_id,),
         )
-        return {"dry_run": False, "live_url": live_url, "context": context}
+        return {
+        "dry_run": False,
+        "live_url": live_url,
+        "context": context,
+        "commit": _head_commit(
+            os.path.join(current_app.config["CLIENT_APPS_DIR"], str(project_id))
+        ),
+    }
 
     steps, context = build_deploy_plan(project)
 
@@ -356,4 +387,11 @@ def execute_deploy(project_id, dry_run=False):
         "UPDATE deployments SET status = 'deployed' WHERE project_id = %s AND status = 'approved'",
         (project_id,),
     )
-    return {"dry_run": False, "live_url": live_url, "context": context}
+    return {
+        "dry_run": False,
+        "live_url": live_url,
+        "context": context,
+        "commit": _head_commit(
+            os.path.join(current_app.config["CLIENT_APPS_DIR"], str(project_id))
+        ),
+    }

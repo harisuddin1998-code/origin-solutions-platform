@@ -182,19 +182,34 @@ def deploy_project_route(project_id):
     if not project:
         abort(404)
 
-    if project["github_repo"]:
+    # Come back to the page the button was on. It lives on Web Apps as well as
+    # Projects now, and always bouncing to Projects meant clicking "Fetch
+    # latest push" appeared to do nothing: the result was flashed onto a page
+    # the user wasn't looking at.
+    back = request.referrer or url_for("super_admin.projects")
+
+    if project["github_repo"] or os.path.isdir(_repo_dir(project_id)):
         try:
             result = execute_deploy(project_id)
-            flash(f"Deployed — live at {result['live_url']}", "success")
+            commit = result.get("commit")
+            if commit:
+                flash(
+                    f"Deployed {commit['sha']} — \"{commit['message']}\" "
+                    f"({commit['when']}). Live at {result['live_url']}",
+                    "success",
+                )
+            else:
+                flash(f"Deployed — live at {result['live_url']}", "success")
         except (ValueError, RuntimeError) as exc:
             flash(str(exc), "error")
     else:
         try:
             deploy_project(project["subdomain"])
+            flash(f"{project['name']} marked live.", "success")
         except ValueError as exc:
             flash(str(exc), "error")
 
-    return redirect(url_for("super_admin.projects"))
+    return redirect(back)
 
 
 @bp.route("/projects/<int:project_id>/delete", methods=["POST"])
@@ -260,6 +275,7 @@ def _webapp_context(project_id, **extra):
         "backups": webapp_ops.list_backups(project),
         "source_dir": os.path.join(current_app.config["CLIENT_APPS_DIR"], str(project["id"])),
         "data_dir": os.path.join(current_app.config["CLIENT_DATA_DIR"], str(project["id"])),
+        "commit": vps_deploy._head_commit(_repo_dir(project["id"])),
         "console_output": None,
     }
     ctx.update(extra)
