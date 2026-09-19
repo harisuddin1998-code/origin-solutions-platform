@@ -10,7 +10,7 @@ from core.db import execute, query
 from crm.helpers import get_agency_revenue_summary, get_financial_report, record_payment
 from projects import vps_deploy, webapp_ops, wizard
 from projects.dockerize import (
-    DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_stack,
+    DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_data_paths, detect_stack,
 )
 from projects.github import create_project_from_repo
 from projects.helpers import deploy_project, pause_project, resume_project, set_live_url
@@ -374,6 +374,18 @@ def webapp_new_configure(project_id):
     except OSError:
         listing = []
 
+    # Work out where this app keeps its data and save it straight away, so a
+    # first deploy is already protected even if nobody opens Advanced
+    # settings. Left alone once set, so a hand-picked value is never
+    # overwritten by a later guess.
+    detected_data_path = detect_data_paths(repo_dir)
+    if detected_data_path and not project.get("data_mount_path"):
+        execute(
+            "UPDATE projects SET data_mount_path = %s WHERE id = %s",
+            (detected_data_path, project_id),
+        )
+        project = query("SELECT * FROM projects WHERE id = %s", (project_id,), fetchone=True)
+
     return render_template(
         "super_admin/webapp_new.html",
         step=2,
@@ -382,6 +394,7 @@ def webapp_new_configure(project_id):
         stack=stack,
         stack_label=STACK_LABELS.get(stack),
         detect_failed_message=DETECT_FAILED_MESSAGE,
+        detected_data_path=detected_data_path,
         listing=listing,
         repo_dir=repo_dir,
     )

@@ -89,6 +89,116 @@ def detect_stack(repo_dir, main_file_path=None, start_command=None):
     return None
 
 
+# Files/dirs an app may keep persistent data in, that a rebuild would
+# otherwise throw away. Used by detect_data_paths().
+_SQLITE_SUFFIXES = (".db", ".sqlite", ".sqlite3")
+_SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", "migrations"}
+
+
+def _python_sources(repo_dir, limit=400):
+    """Every .py in the checkout, skipping vendored and build directories."""
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
+        for name in files:
+            if name.endswith(".py"):
+                yield os.path.join(root, name)
+                limit -= 1
+                if limit <= 0:
+                    return
+
+
+def detect_data_paths(repo_dir):
+    """Where this app keeps data that has to survive a rebuild.
+
+    Returns a value for project.data_mount_path (see vps_deploy._run_container)
+    or None to accept the default. A container is rebuilt from scratch on every
+    deploy, so a SQLite file the app writes anywhere but the mounted path is
+    gone each time - the 2026-09-17 Al Murad and gracelogistics incidents, and
+    very nearly the doctor booking app's appointments two days later.
+
+    The distinction that matters most is between the two ways a relative
+    SQLite path resolves:
+
+      - ``sqlite:///foo.db`` through Flask-SQLAlchemy is *instance-relative*
+        and lands in /app/instance (PSG, gracelogistics, the doctor app).
+      - ``sqlite3.connect("foo.db")`` is resolved against the working
+        directory and lands in /app/foo.db (Dost Muhammad, Elite).
+
+    Guessing wrong here mounts an empty directory over nothing useful and the
+    real database still lives in the container, which is exactly the bug this
+    exists to prevent.
+    """
+    # Django's settings are rewritten to /data by _write_django, so the
+    # default mount is already correct and nothing else needs finding.
+    if os.path.isfile(os.path.join(repo_dir, "manage.py")):
+        return None
+
+    instance_relative = os.path.isdir(os.path.join(repo_dir, "instance"))
+    workdir_files = set()
+
+    for path in _python_sources(repo_dir):
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as fh:
+                source = fh.read()
+        except OSError:
+            continue
+
+        # Flask-SQLAlchemy URIs. Three slashes then a bare name is
+        # instance-relative; anything with a directory or a BASE_DIR-style
+        # f-string expression resolves somewhere explicit instead.
+        for uri in re.findall(r"sqlite:///([^\"'\s)}]*)", source):
+            if not uri or uri.startswith("{"):
+                continue  # built from a variable - handled by the joins below
+            if "/" in uri:
+                instance_relative = instance_relative or "instance" in uri
+            elif uri.endswith(_SQLITE_SUFFIXES):
+                instance_relative = True
+
+        # Raw sqlite3, resolved against the working directory.
+        for target in re.findall(r"sqlite3\.connect\(\s*[\"']([^\"']+)[\"']", source):
+            if "instance" in target:
+                instance_relative = True
+            elif target.endswith(_SQLITE_SUFFIXES):
+                workdir_files.add(os.path.basename(target))
+
+        # A db filename built with os.path.join, or held in a module-level
+        # constant that sqlite3.connect() is handed later. Read these a line
+        # at a time: the join's arguments routinely nest more calls
+        # (os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.db"))
+        # and a regex that stops at the first ")" never reaches the filename.
+        for line in source.splitlines():
+            if ".db" not in line and ".sqlite" not in line:
+                continue
+            names = re.findall(r"[\"']([\w.\-]+(?:\.db|\.sqlite3?))[\"']", line)
+            if not names:
+                continue
+            is_join = "os.path.join" in line or "os.path.dirname" in line
+            is_constant = re.match(r"\s*[A-Z_]{2,}\s*=", line) is not None
+            if not (is_join or is_constant):
+                continue
+            # "instance" appearing as another segment of the same expression
+            # means the file sits inside the instance folder, not beside it -
+            # mounting the filename alone would miss it entirely.
+            if re.search(r"[\"']instance[\"']|instance/", line):
+                instance_relative = True
+            else:
+                workdir_files.update(os.path.basename(n) for n in names)
+
+        if re.search(r"[\"'][^\"']*instance/[^\"']*\.(?:db|sqlite3?)[\"']", source):
+            instance_relative = True
+
+    # Databases committed to the repo are the most direct evidence of all.
+    for entry in os.listdir(repo_dir):
+        if entry.endswith(_SQLITE_SUFFIXES) and os.path.isfile(os.path.join(repo_dir, entry)):
+            workdir_files.add(entry)
+
+    if instance_relative:
+        return "/app/instance"
+    if workdir_files:
+        return ",".join("/app/" + name for name in sorted(workdir_files))
+    return None
+
+
 def ensure_dockerfile(repo_dir, main_file_path=None, start_command=None):
     """Writes a Dockerfile at the repo root if one isn't already there.
     Raises DockerizeError if the stack can't be confidently detected and no
