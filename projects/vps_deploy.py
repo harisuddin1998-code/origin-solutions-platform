@@ -87,12 +87,30 @@ def render_nginx_config(subdomain, domain, port):
     access_log /var/log/nginx/{server_name}.access.log;
     error_log  /var/log/nginx/{server_name}.error.log;
 
+    # Client apps routinely accept photo and document uploads; Nginx's 1 MB
+    # default rejected those before the app ever saw them. 100 MB matches the
+    # ceiling Cloudflare's free plan enforces anyway, so this is as high as
+    # raising it can usefully go.
+    client_max_body_size 100m;
+
     location / {{
         proxy_pass http://127.0.0.1:{port};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSockets: without these an upgrade request is proxied as a plain
+        # HTTP one and the connection dies. Streamlit is built on them, and so
+        # is anything with live chat or a realtime dashboard.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Report and export endpoints regularly run past Nginx's 60s default
+        # and came back as a 504 with the work still running behind it.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }}
 }}
 """
