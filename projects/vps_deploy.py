@@ -116,25 +116,31 @@ def render_nginx_config(subdomain, domain, port):
 """
 
 
+def _git(repo_dir, *args):
+    return subprocess.run(["git", "-C", repo_dir, *args], check=True, capture_output=True, text=True)
+
+
 def _fetch_repo(repo_dir, repo_url, branch=None):
-    """Clones repo_url into repo_dir, or pulls latest if already cloned.
-    When branch is set, always fetches + hard-resets to origin/<branch>
-    rather than trusting whatever's currently checked out - keeps redeploys
-    correct even if someone manually switched branches on the server."""
+    """Clones repo_url into repo_dir, or brings an existing clone up to date.
+    GitHub is the source of truth: an existing clone is always fetched and
+    hard-reset to origin/<branch> (or the checked-out branch's upstream when
+    no branch is set), so a file someone edited by hand on the server can
+    never block a redeploy with a merge error. Those edits aren't thrown
+    away silently - they're stashed first and can be recovered with
+    `git stash list` / `git stash pop` inside repo_dir."""
     if os.path.isdir(os.path.join(repo_dir, ".git")):
+        if _git(repo_dir, "status", "--porcelain", "--untracked-files=no").stdout.strip():
+            _git(
+                repo_dir, "-c", "user.name=deploy", "-c", "user.email=deploy@localhost",
+                "stash", "push", "-m", f"auto-stash before deploy {datetime.now():%Y-%m-%d %H:%M:%S}",
+            )
         if branch:
-            subprocess.run(
-                ["git", "-C", repo_dir, "fetch", "origin", branch], check=True, capture_output=True, text=True
-            )
-            subprocess.run(
-                ["git", "-C", repo_dir, "checkout", branch], check=True, capture_output=True, text=True
-            )
-            subprocess.run(
-                ["git", "-C", repo_dir, "reset", "--hard", f"origin/{branch}"],
-                check=True, capture_output=True, text=True,
-            )
+            _git(repo_dir, "fetch", "origin", branch)
+            _git(repo_dir, "checkout", "-f", branch)
+            _git(repo_dir, "reset", "--hard", f"origin/{branch}")
         else:
-            subprocess.run(["git", "-C", repo_dir, "pull"], check=True, capture_output=True, text=True)
+            _git(repo_dir, "fetch", "origin")
+            _git(repo_dir, "reset", "--hard", "@{upstream}")
     else:
         clone_cmd = ["git", "clone"]
         if branch:
