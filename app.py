@@ -20,6 +20,7 @@ def create_app():
     from blueprints.super_admin import bp as super_admin_bp
     from blueprints.tenant_app import bp as tenant_app_bp
     from mock_integrations import bp as mock_integrations_bp
+    from projects.demo_sites_api import bp as demo_sites_api_bp
     from projects.webhook_api import bp as webhook_api_bp
 
     app.register_blueprint(auth_bp)
@@ -31,6 +32,7 @@ def create_app():
     app.register_blueprint(tenant_app_bp)
     app.register_blueprint(mock_integrations_bp)
     app.register_blueprint(webhook_api_bp)
+    app.register_blueprint(demo_sites_api_bp)
 
     from core.cli_api import bp as cli_api_bp
 
