@@ -8,7 +8,7 @@ from flask import (
 from core.auth import guard_role
 from core.db import execute, query
 from crm.helpers import get_agency_revenue_summary, get_financial_report, record_payment
-from projects import vps_deploy, webapp_ops, wizard
+from projects import demo_sites, vps_deploy, webapp_ops, wizard
 from projects.dockerize import (
     DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_data_paths, detect_stack,
 )
@@ -663,3 +663,67 @@ def update_complaint_status(complaint_id):
         abort(400)
     execute("UPDATE complaints SET status = %s WHERE id = %s", (status, complaint_id))
     return redirect(url_for("super_admin.complaints"))
+
+
+# ------------------------------------------------------------- demo sites
+# The industry demo sites all live inside the one "demos" web app (one folder
+# per site). This page is that app's control panel, but per site: pick one on
+# the left, see its live check, traffic, files and a preview on the right.
+# The heavy lifting lives in projects/demo_sites.py.
+
+def _demo_or_404():
+    project = demo_sites.demos_project()
+    if not project:
+        abort(404)
+    return project
+
+
+@bp.route("/demo-sites")
+def demo_sites_index():
+    project = demo_sites.demos_project()
+    sites = demo_sites.load_sites(project) if project else []
+    if not sites:
+        return render_template("super_admin/demo_sites.html", project=project, sites=[], site=None)
+    return redirect(url_for("super_admin.demo_site_detail", sub=sites[0]["sub"]))
+
+
+@bp.route("/demo-sites/<sub>")
+def demo_site_detail(sub):
+    project = _demo_or_404()
+    sites = demo_sites.load_sites(project)
+    site = next((s for s in sites if s["sub"] == sub), None)
+    if not site:
+        abort(404)
+    domain = current_app.config["DEPLOY_DOMAIN"]
+    folder, files = demo_sites.site_files(project, sub)
+    return render_template(
+        "super_admin/demo_sites.html",
+        project=project, sites=sites, site=site, domain=domain,
+        server_name=f"{sub}.{domain}",
+        state=webapp_ops.container_state(project),
+        check=demo_sites.check_site(project, sub, domain),
+        traffic=demo_sites.traffic(sub, domain),
+        wired=demo_sites.is_wired(sub, domain),
+        folder=folder, files=files,
+        commit=vps_deploy._head_commit(_repo_dir(project["id"])),
+        themes=sorted({s["tpl"] for s in sites}),
+    )
+
+
+@bp.route("/demo-sites/<sub>/restart", methods=["POST"])
+def demo_sites_restart(sub):
+    project = _demo_or_404()
+    ok, out = webapp_ops.restart_container(project)
+    flash("All demo sites restarted." if ok else f"Restart failed. {out}", "success" if ok else "error")
+    return redirect(url_for("super_admin.demo_site_detail", sub=sub))
+
+
+@bp.route("/demo-sites/<sub>/sync", methods=["POST"])
+def demo_sites_sync(sub):
+    project = _demo_or_404()
+    try:
+        ok, message = demo_sites.wire_all(project)
+    except Exception as exc:  # noqa: BLE001 - shown to the admin, not swallowed
+        ok, message = False, f"Sync failed: {exc}"
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("super_admin.demo_site_detail", sub=sub))

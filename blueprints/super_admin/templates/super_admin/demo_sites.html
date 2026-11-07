@@ -1,0 +1,224 @@
+{% extends "super_admin/_layout.html" %}
+
+{% block title %}Demo Sites{% endblock %}
+{% block portal_name %}Super Admin{% endblock %}
+
+{% block sidebar_links %}
+  <a href="{{ url_for('super_admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Command Center</a>
+  <a href="{{ url_for('super_admin.tenants') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tenants</a>
+  <a href="{{ url_for('super_admin.projects') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Projects</a>
+  <a href="{{ url_for('super_admin.webapps') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Web Apps</a>
+  <a href="{{ url_for('super_admin.preview') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Preview</a>
+  <a href="{{ url_for('super_admin.demo_sites_index') }}" class="block rounded-lg bg-violet-50 px-3 py-2 font-medium text-violet-700 ring-1 ring-inset ring-violet-200">Demo Sites</a>
+  <a href="{{ url_for('super_admin.tasks') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Tasks</a>
+  <a href="{{ url_for('super_admin.financials') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Financials</a>
+  <a href="{{ url_for('super_admin.users') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Users</a>
+  <a href="{{ url_for('super_admin.complaints') }}" class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">Complaints</a>
+{% endblock %}
+
+{% block content %}
+{% if not site %}
+  <h1 class="admin-heading mb-2 text-2xl font-semibold text-slate-900">Demo Sites</h1>
+  <p class="text-sm text-slate-500">
+    {% if not project %}The demo sites app (subdomain <span class="font-mono">demos</span>) isn't deployed yet.{% else %}No demo site folders found yet.{% endif %}
+  </p>
+{% else %}
+
+<div class="flex gap-6">
+
+  {# ---------------------------------------------- left: every demo site #}
+  <div class="w-60 shrink-0">
+    <div class="mb-3 flex items-center justify-between">
+      <span class="text-xs font-semibold uppercase tracking-widest text-slate-400">Demo sites</span>
+      <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{{ sites|length }}</span>
+    </div>
+    <input id="ds-filter" type="search" placeholder="Search sites…" autocomplete="off"
+           class="mb-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+    <nav id="ds-list" class="flex max-h-[calc(100vh-230px)] flex-col gap-1 overflow-y-auto pr-1">
+      {% for s in sites %}
+        {% set active = s.sub == site.sub %}
+        <a href="{{ url_for('super_admin.demo_site_detail', sub=s.sub) }}"
+           data-k="{{ (s.sub ~ ' ' ~ s.brand ~ ' ' ~ s.niche ~ ' ' ~ s.city)|lower }}"
+           {% if active %}id="ds-active"{% endif %}
+           class="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors
+                  {{ 'bg-violet-600 text-white shadow-sm' if active else 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+          <span class="h-2 w-2 shrink-0 rounded-full {{ 'ring-2 ring-white' if active else '' }}" style="background:{{ s.accent }}"></span>
+          <span class="truncate">{{ s.sub }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+    <a href="https://demos.{{ domain }}" target="_blank" rel="noopener"
+       class="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-violet-600 hover:bg-violet-50">
+      <svg class="inline h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg> Open the showcase
+    </a>
+  </div>
+
+  {# ------------------------------------------ right: the selected site #}
+  <div class="min-w-0 flex-1 space-y-6">
+
+    <div>
+      <h1 class="admin-heading text-2xl font-semibold text-slate-900">
+        Configuration for
+        <a href="https://{{ server_name }}" target="_blank" rel="noopener" class="text-violet-600 hover:underline">{{ server_name }}</a>
+      </h1>
+      <p class="mt-1 text-sm text-slate-500">{{ site.brand }} · {{ site.niche }}{% if site.city %} · {{ site.city }}{% endif %}</p>
+    </div>
+
+    {# ------------------------------------------------------- Reload #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Reload</h2>
+      <p class="mt-2 text-sm text-slate-500">
+        Pull the newest push from GitHub and rebuild, or just restart what is already built.
+      </p>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <form method="post" action="{{ url_for('super_admin.deploy_project_route', project_id=project.id) }}"
+              onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Rebuilding all demo sites…'">
+          <button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">⟳ Fetch latest push &amp; rebuild</button>
+        </form>
+        <form method="post" action="{{ url_for('super_admin.demo_sites_restart', sub=site.sub) }}">
+          <button class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Restart app</button>
+        </form>
+        <a href="https://{{ server_name }}" target="_blank" rel="noopener"
+           class="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100">Open site <svg class="inline h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+      </div>
+      <p class="mt-3 text-xs text-slate-400">
+        All {{ sites|length }} demo sites share one container, so a rebuild updates every site at once.
+        {% if commit %}Live code: <span class="font-mono">{{ commit.sha }}</span> — {{ commit.message }} ({{ commit.when }}).{% else %}Not linked to GitHub yet — link it under Web Apps → demos.{% endif %}
+      </p>
+    </section>
+
+    {# ------------------------------------------------------- Status #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Status</h2>
+      <dl class="mt-3 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+        <div>
+          <dt class="text-slate-500">This site</dt>
+          <dd class="mt-1">
+            {% if check.ok %}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>online · {{ check.code }} · {{ check.ms }} ms</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>{{ check.code or 'unreachable' }}</span>
+              {% if check.error %}<p class="mt-1 text-xs text-rose-600">{{ check.error }}</p>{% endif %}
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-slate-500">Container</dt>
+          <dd class="mt-1">
+            <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if state.running else 'bg-amber-50 text-amber-700' }}"><span class="h-1.5 w-1.5 rounded-full {{ 'bg-emerald-500' if state.running else 'bg-amber-500' }}"></span>{{ state.status }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-slate-500">Domain</dt>
+          <dd class="mt-1">
+            {% if wired %}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">✓ wired on the tunnel</span>
+            {% else %}
+              <form method="post" action="{{ url_for('super_admin.demo_sites_sync', sub=site.sub) }}" class="inline">
+                <button class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100">Not wired — Sync domains</button>
+              </form>
+            {% endif %}
+          </dd>
+        </div>
+        <div><dt class="text-slate-500">Uptime</dt><dd class="mt-1 text-slate-800">{{ state.uptime }}</dd></div>
+        <div><dt class="text-slate-500">Internal port</dt><dd class="mt-1 font-mono text-xs text-slate-800">{{ project.port }}</dd></div>
+        <div><dt class="text-slate-500">Container name</dt><dd class="mt-1 font-mono text-xs text-slate-800">{{ state.container }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-slate-500">Page title</dt><dd class="mt-1 text-slate-800">{{ check.title or '—' }}</dd></div>
+        <div><dt class="text-slate-500">Page size</dt><dd class="mt-1 text-slate-800">{{ check.size_kb ~ ' KB' if check.size_kb else '—' }}</dd></div>
+      </dl>
+    </section>
+
+    {# ------------------------------------------------------- Traffic #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Traffic</h2>
+      {% if traffic.available %}
+        <div class="mt-3 grid grid-cols-3 gap-4 text-sm">
+          <div><div class="text-slate-500">This month</div><div class="mt-1 text-2xl font-semibold text-slate-900">{{ traffic.month }}</div></div>
+          <div><div class="text-slate-500">Today</div><div class="mt-1 text-2xl font-semibold text-slate-900">{{ traffic.today }}</div></div>
+          <div><div class="text-slate-500">This hour</div><div class="mt-1 text-2xl font-semibold text-slate-900">{{ traffic.hour }}</div></div>
+        </div>
+      {% else %}
+        <p class="mt-2 text-sm text-slate-500">No traffic logged yet.</p>
+      {% endif %}
+    </section>
+
+    {# ------------------------------------------------------- Live preview #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h2 class="text-base font-semibold text-slate-900">Live preview</h2>
+        <div class="flex gap-1 rounded-lg bg-slate-100 p-1 text-xs font-semibold">
+          <button type="button" data-w="100%" class="ds-dev rounded-md bg-white px-3 py-1 text-slate-800 shadow-sm">Desktop</button>
+          <button type="button" data-w="820px" class="ds-dev rounded-md px-3 py-1 text-slate-500">Tablet</button>
+          <button type="button" data-w="390px" class="ds-dev rounded-md px-3 py-1 text-slate-500">Mobile</button>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-center rounded-lg bg-slate-100 p-3">
+        <iframe id="ds-frame" src="https://{{ server_name }}" loading="lazy" title="{{ site.brand }} preview"
+                class="h-[680px] rounded-md bg-white shadow-lg transition-all duration-300" style="width:100%"></iframe>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------- Site details #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Site</h2>
+      <dl class="mt-3 space-y-3 text-sm">
+        <div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">Brand</dt><dd class="text-slate-800">{{ site.brand }}</dd></div>
+        <div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">Industry</dt><dd class="text-slate-800">{{ site.niche }}</dd></div>
+        <div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">Theme</dt><dd><span class="rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">{{ site.tpl }}</span></dd></div>
+        {% if site.city %}<div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">City</dt><dd class="text-slate-800">{{ site.city }}</dd></div>{% endif %}
+        <div class="flex items-center gap-4"><dt class="w-36 shrink-0 text-slate-500">Colours</dt>
+          <dd class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-md ring-1 ring-slate-200" style="background:{{ site.accent }}"></span><span class="font-mono text-xs">{{ site.accent }}</span></span>
+            <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-md ring-1 ring-slate-200" style="background:{{ site.accent2 }}"></span><span class="font-mono text-xs">{{ site.accent2 }}</span></span>
+          </dd></div>
+        <div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">Folder in repo</dt><dd class="break-all font-mono text-xs text-slate-700">sites/{{ site.sub }}/</dd></div>
+        <div class="flex gap-4"><dt class="w-36 shrink-0 text-slate-500">On server</dt><dd class="break-all font-mono text-xs text-slate-700">{{ folder }}</dd></div>
+      </dl>
+      {% if files %}
+      <table class="mt-4 w-full text-sm">
+        <thead><tr class="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400"><th class="py-2 font-medium">File</th><th class="py-2 font-medium">Size</th><th class="py-2 font-medium">Modified</th></tr></thead>
+        <tbody>
+          {% for f in files %}<tr class="border-b border-slate-50"><td class="py-2 font-mono text-xs text-slate-700">{{ f.name }}</td><td class="py-2 text-slate-500">{{ f.size_kb }} KB</td><td class="py-2 text-slate-500">{{ f.modified }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </section>
+
+    {# ------------------------------------------------------- How to edit #}
+    <section class="rounded-xl bg-white p-5 shadow-sm">
+      <h2 class="border-b border-slate-100 pb-2 text-base font-semibold text-slate-900">Edit this site</h2>
+      <ol class="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-slate-600">
+        <li>Open <span class="font-mono text-xs">sites/{{ site.sub }}/</span> in your editor and change <span class="font-mono text-xs">index.html</span> or <span class="font-mono text-xs">style.css</span>.</li>
+        <li>Re-colour the whole site by changing <span class="font-mono text-xs">--accent</span> / <span class="font-mono text-xs">--accent-2</span> near the top of <span class="font-mono text-xs">index.html</span>.</li>
+        <li>Commit and push, then click <strong>Fetch latest push &amp; rebuild</strong> above.</li>
+        <li>Added a brand-new site folder? Push, rebuild, then
+          <form method="post" action="{{ url_for('super_admin.demo_sites_sync', sub=site.sub) }}" class="inline">
+            <button class="font-semibold text-violet-600 hover:underline">Sync domains</button>
+          </form> to give it its own address.</li>
+      </ol>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var q = document.getElementById('ds-filter'), list = document.getElementById('ds-list');
+  if (q && list) q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase();
+    [].forEach.call(list.children, function (a) { a.style.display = !v || a.dataset.k.indexOf(v) > -1 ? '' : 'none'; });
+  });
+  var act = document.getElementById('ds-active');
+  if (act && list) list.scrollTop = act.offsetTop - list.offsetTop - list.clientHeight / 2;
+  var frame = document.getElementById('ds-frame');
+  document.querySelectorAll('.ds-dev').forEach(function (b) {
+    b.addEventListener('click', function () {
+      frame.style.width = b.dataset.w;
+      document.querySelectorAll('.ds-dev').forEach(function (x) {
+        x.className = 'ds-dev rounded-md px-3 py-1 ' + (x === b ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500');
+      });
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
