@@ -12,7 +12,8 @@ from projects import vps_deploy, webapp_ops, wizard
 from projects.dockerize import (
     DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_data_paths, detect_stack,
 )
-from projects.github import create_project_from_repo
+from projects.github import create_project_from_repo, generate_webhook_secret
+from core.secrets import encrypt_secret
 from projects.helpers import deploy_project, pause_project, resume_project, set_live_url
 from projects.teardown import teardown_project
 from projects.vps_deploy import execute_deploy
@@ -324,19 +325,28 @@ def webapp_new_source():
             if "/" not in repo:
                 raise wizard.WizardError("Enter the repo as owner/repo, e.g. sheikhharis-gif/MIB.")
             branch = (request.form.get("branch") or "").strip()
+            token = (request.form.get("github_token") or "").strip()
+            env_file = request.form.get("env_file")
             project_id = wizard.create_project(
                 name or repo.split("/")[-1], subdomain or repo.split("/")[-1],
                 github_repo=repo, branch=branch,
             )
+            if token:
+                execute("UPDATE projects SET github_token_enc = %s WHERE id = %s",
+                        (encrypt_secret(token), project_id))
+            if env_file and env_file.strip():
+                execute("UPDATE projects SET env_file_enc = %s WHERE id = %s",
+                        (encrypt_secret(env_file), project_id))
+            clone_url = (f"https://x-access-token:{token}@github.com/{repo}.git"
+                         if token else f"https://github.com/{repo}.git")
             try:
-                vps_deploy._fetch_repo(_repo_dir(project_id), f"https://github.com/{repo}.git",
-                                       branch or None)
+                vps_deploy._fetch_repo(_repo_dir(project_id), clone_url, branch or None)
             except Exception as exc:
                 execute("DELETE FROM projects WHERE id = %s", (project_id,))
-                detail = getattr(exc, "stderr", None) or str(exc)
+                detail = vps_deploy._redact(getattr(exc, "stderr", None) or str(exc))
                 raise wizard.WizardError(
-                    f"Could not clone {repo}. Check the name, the branch, and that the repo "
-                    f"is public.\n\n{detail}"
+                    f"Could not clone {repo}. Check the name and branch, that the repo is public, "
+                    f"or that the access token has read access to a private repo.\n\n{detail}"
                 )
 
         elif source == "upload":
@@ -515,6 +525,31 @@ def webapp_config(project_id):
         (clean("branch"), clean("main_file_path"), clean("start_command"),
          clean("data_mount_path"), project_id),
     )
+
+    # Link / convert to a GitHub repo (works for a zip-uploaded app too) and
+    # store its private-repo access token + environment file, both encrypted.
+    # The two secrets are write-only in the form: a blank field keeps whatever
+    # is stored rather than wiping it.
+    repo = clean("github_repo")
+    if repo:
+        repo = re.sub(r"^https?://github\.com/", "", repo).removesuffix(".git").strip("/")
+        if repo != project.get("github_repo"):
+            secret = project.get("github_webhook_secret") or generate_webhook_secret()
+            execute(
+                "UPDATE projects SET github_repo = %s, github_webhook_secret = %s WHERE id = %s",
+                (repo, secret, project_id),
+            )
+
+    token = (request.form.get("github_token") or "").strip()
+    if token:
+        execute("UPDATE projects SET github_token_enc = %s WHERE id = %s",
+                (encrypt_secret(token), project_id))
+
+    env_file = request.form.get("env_file")
+    if env_file and env_file.strip():
+        execute("UPDATE projects SET env_file_enc = %s WHERE id = %s",
+                (encrypt_secret(env_file), project_id))
+
     flash("Saved. Click \"Fetch latest push & rebuild\" to apply it.", "success")
     return redirect(url_for("super_admin.webapp_detail", project_id=project_id))
 

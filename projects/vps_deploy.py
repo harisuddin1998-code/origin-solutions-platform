@@ -33,12 +33,15 @@ default branch isn't what should go live.
 """
 
 import os
+import re
+import shutil
 import subprocess
 from datetime import datetime
 
 from flask import current_app
 
 from core.db import execute, query
+from core.secrets import decrypt_secret
 from projects.cloudflare import purge_cache, wire_up_subdomain
 from projects.dockerize import ensure_dockerfile
 
@@ -116,6 +119,43 @@ def render_nginx_config(subdomain, domain, port):
 """
 
 
+def _authed_repo_url(project):
+    """Clone/fetch URL for a project's GitHub repo, carrying a stored access
+    token for a PRIVATE repo. The token (if any) lives encrypted in
+    github_token_enc; a public repo has none and clones over plain https."""
+    repo = project["github_repo"]
+    token = decrypt_secret(project.get("github_token_enc"))
+    if token:
+        return f"https://x-access-token:{token}@github.com/{repo}.git"
+    return f"https://github.com/{repo}.git"
+
+
+def _redact(text):
+    """Strip an embedded access token out of any text before it reaches a log
+    or the UI - git echoes the remote URL (token and all) in its errors."""
+    if not text:
+        return text
+    return re.sub(r"(x-access-token:)[^@/\s]+(@)", r"\1***\2", text)
+
+
+def _env_file_host(project_id):
+    """Host path holding a project's injected .env, kept BESIDE its data dir
+    (CLIENT_DATA_DIR/<id>.env) so it never lands under the app's own data
+    mount (CLIENT_DATA_DIR/<id>)."""
+    return os.path.join(current_app.config["CLIENT_DATA_DIR"], f"{project_id}.env")
+
+
+def _write_env_file(host_path, content):
+    """Writes the per-app environment file that gets mounted at /app/.env, or
+    removes it when the app has none. 0600 - it holds DB passwords and keys."""
+    if content:
+        with open(host_path, "w", encoding="utf-8") as f:
+            f.write(content if content.endswith("\n") else content + "\n")
+        os.chmod(host_path, 0o600)
+    elif os.path.exists(host_path):
+        os.remove(host_path)
+
+
 def _git(repo_dir, *args):
     return subprocess.run(["git", "-C", repo_dir, *args], check=True, capture_output=True, text=True)
 
@@ -142,6 +182,12 @@ def _fetch_repo(repo_dir, repo_url, branch=None):
             _git(repo_dir, "fetch", "origin")
             _git(repo_dir, "reset", "--hard", "@{upstream}")
     else:
+        # A fresh clone. If repo_dir already holds non-git code (e.g. a
+        # zip-uploaded app being converted to a GitHub repo), clear it first -
+        # git clone refuses a non-empty target. Only the code lives here; the
+        # app's persistent data is under CLIENT_DATA_DIR and is left untouched.
+        if os.path.isdir(repo_dir) and os.listdir(repo_dir):
+            shutil.rmtree(repo_dir)
         clone_cmd = ["git", "clone"]
         if branch:
             clone_cmd += ["-b", branch]
@@ -198,11 +244,12 @@ def build_deploy_plan(project):
     domain = current_app.config["DEPLOY_DOMAIN"]
     apps_dir = current_app.config["CLIENT_APPS_DIR"]
     data_dir = os.path.join(current_app.config["CLIENT_DATA_DIR"], str(project["id"]))
+    env_file_host = _env_file_host(project["id"])
 
     port = allocate_port(project)
     container = container_name_for(project)
     repo_dir = os.path.join(apps_dir, str(project["id"]))
-    repo_url = f"https://github.com/{project['github_repo']}.git"
+    repo_url = _authed_repo_url(project) if project.get("github_repo") else None
     branch = project.get("branch")
     subdomain = project["subdomain"]
     server_name = f"{subdomain}.{domain}"
@@ -246,9 +293,14 @@ def build_deploy_plan(project):
             lambda: subprocess.run(["docker", "rm", "-f", container], capture_output=True, text=True),
         ),
         (
+            f"Write the environment file for {project['name']}",
+            None,
+            lambda: _write_env_file(env_file_host, decrypt_secret(project.get("env_file_enc"))),
+        ),
+        (
             f"Start container {container} on port {port}",
             None,
-            lambda: _run_container(container, port, data_dir, project.get("data_mount_path")),
+            lambda: _run_container(container, port, data_dir, project.get("data_mount_path"), _dockerfile_port(repo_dir), env_file_host),
         ),
         (
             f"Write Nginx config for {server_name}",
@@ -272,7 +324,25 @@ def build_deploy_plan(project):
     return steps, context
 
 
-def _run_container(container, port, data_dir, mount_path=None):
+def _dockerfile_port(repo_dir):
+    """The port the container actually listens on, taken from the first
+    EXPOSE line of its Dockerfile. Auto-generated Dockerfiles all EXPOSE
+    CONTAINER_PORT, but a repo's own custom Dockerfile may listen on any
+    port (e.g. digportal/#37 on 6013) - publishing the host port to a
+    hard-coded 8000 then yields a 502 because nothing is listening there.
+    Falls back to CONTAINER_PORT when no EXPOSE is found."""
+    try:
+        with open(os.path.join(repo_dir, "Dockerfile"), encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                m = re.match(r"\s*EXPOSE\s+(\d+)", line, re.IGNORECASE)
+                if m:
+                    return int(m.group(1))
+    except OSError:
+        pass
+    return CONTAINER_PORT
+
+
+def _run_container(container, port, data_dir, mount_path=None, container_port=None, env_file_host=None):
     """Every single-container deploy gets a persistent per-project data
     mount, whether or not the app actually uses it - harmless if unused.
     Defaults to /data, which is what dockerize.py's Django template points
@@ -290,22 +360,38 @@ def _run_container(container, port, data_dir, mount_path=None):
     persistent mount at all until this - see the 2026-09-17
     gracelogistics/al_murad incidents this generalizes the fix from."""
     os.makedirs(data_dir, exist_ok=True)
+    entries = [e.strip() for e in (mount_path or "/data").split(",") if e.strip()]
+    # Several directories that must each survive a rebuild (e.g. /app/data AND
+    # /app/history) cannot all be aliased onto data_dir - they would then share
+    # one host folder and clobber each other. When there is more than one
+    # directory entry, give each its own host subdir (data_dir/app_data,
+    # data_dir/app_history, ...). A lone directory still maps straight to
+    # data_dir, so every existing single-mount app is unaffected.
+    dir_count = sum(1 for e in entries if "." not in os.path.basename(e))
     volume_args = []
-    for entry in (mount_path or "/data").split(","):
-        entry = entry.strip()
-        if "." in os.path.basename(entry):
-            host_source = os.path.join(data_dir, os.path.basename(entry))
+    for entry in entries:
+        base = os.path.basename(entry)
+        if "." in base:
+            host_source = os.path.join(data_dir, base)
             if not os.path.exists(host_source):
                 open(host_source, "a").close()
+        elif dir_count > 1:
+            host_source = os.path.join(data_dir, entry.strip("/").replace("/", "_"))
+            os.makedirs(host_source, exist_ok=True)
         else:
             host_source = data_dir
         volume_args += ["-v", f"{host_source}:{entry}"]
+    # A private-repo build ships no .env (it is gitignored); the platform
+    # mounts the per-app environment file in at runtime instead, so the app
+    # gets its DB password etc. without the secret ever entering the image.
+    if env_file_host and os.path.exists(env_file_host):
+        volume_args += ["-v", f"{env_file_host}:/app/.env:ro"]
     subprocess.run(
         [
             "docker", "run", "-d",
             "--name", container,
             "--restart", "unless-stopped",
-            "-p", f"127.0.0.1:{port}:{CONTAINER_PORT}",
+            "-p", f"127.0.0.1:{port}:{container_port or CONTAINER_PORT}",
             *volume_args,
             container,
         ],
@@ -357,12 +443,12 @@ def execute_deploy(project_id, dry_run=False):
     if is_compose and not dry_run:
         apps_dir = current_app.config["CLIENT_APPS_DIR"]
         repo_dir = os.path.join(apps_dir, str(project["id"]))
-        repo_url = f"https://github.com/{project['github_repo']}.git"
+        repo_url = _authed_repo_url(project)
         try:
             _fetch_repo(repo_dir, repo_url, project.get("branch"))
         except subprocess.CalledProcessError as exc:
             raise RuntimeError(
-                f"Deploy failed at step 'Fetch latest code for {project['name']}': {exc.stderr}"
+                f"Deploy failed at step 'Fetch latest code for {project['name']}': {_redact(exc.stderr)}"
             ) from exc
 
         context = deploy_compose_stack(project, repo_dir)
@@ -403,7 +489,7 @@ def execute_deploy(project_id, dry_run=False):
                 subprocess.run(argv, check=True, capture_output=True, text=True)
         except (subprocess.CalledProcessError, RuntimeError) as exc:
             detail = exc.stderr if isinstance(exc, subprocess.CalledProcessError) else str(exc)
-            raise RuntimeError(f"Deploy failed at step '{description}': {detail}") from exc
+            raise RuntimeError(f"Deploy failed at step '{description}': {_redact(detail)}") from exc
 
     live_url = f"https://{context['server_name']}"
     execute("UPDATE projects SET status = 'live', live_url = %s WHERE id = %s", (live_url, project_id))

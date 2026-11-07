@@ -69,7 +69,7 @@
                      value="{{ form.github_repo if form else '' }}"
                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
               <span class="mt-1 block text-xs text-slate-400">
-                Paste <span class="font-mono">owner/repo</span> or the full GitHub URL. The repo must be public.
+                Paste <span class="font-mono">owner/repo</span> or the full GitHub URL. Public, or private with an access token below.
               </span>
             </label>
             <label class="block">
@@ -81,6 +81,18 @@
               <span class="text-xs font-medium text-slate-600">App name <span class="text-slate-400">(optional)</span></span>
               <input name="name" placeholder="taken from the repo name"
                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs font-medium text-slate-600">Access token <span class="text-slate-400">(private repos only)</span></span>
+              <input type="password" name="github_token" autocomplete="new-password" placeholder="fine-grained PAT · Contents: Read"
+                     class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none">
+              <span class="mt-1 block text-xs text-slate-400">Stored encrypted; used only to clone/fetch this repo.</span>
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs font-medium text-slate-600">Environment file <span class="text-slate-400">(.env — optional)</span></span>
+              <textarea name="env_file" rows="3" placeholder="KEY=value per line (DB_PASSWORD, SECRET_KEY, …)"
+                        class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-violet-400 focus:outline-none"></textarea>
+              <span class="mt-1 block text-xs text-slate-400">Written to <span class="font-mono">/app/.env</span> at container start — kept out of git and the image.</span>
             </label>
           </div>
 

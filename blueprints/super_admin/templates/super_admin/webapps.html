@@ -212,6 +212,30 @@
             Where this app keeps data that must survive a rebuild. Comma-separate more than one.
           </span>
         </label>
+        <div class="space-y-3 border-t border-slate-100 pt-3">
+          <p class="text-xs font-semibold text-slate-700">GitHub &amp; secrets
+            <span class="font-normal text-slate-400">— link a private repo and inject its .env</span></p>
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">GitHub repo (owner/repo)</span>
+            <input name="github_repo" value="{{ project.github_repo or '' }}"
+                   placeholder="owner/repo — links a zip-uploaded app too"
+                   class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs focus:border-violet-400 focus:outline-none">
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">Access token (for a private repo)</span>
+            <input type="password" name="github_token" autocomplete="new-password"
+                   placeholder="{% if project.github_token_enc %}•••• saved — leave blank to keep{% else %}fine-grained PAT · Contents: Read{% endif %}"
+                   class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs focus:border-violet-400 focus:outline-none">
+            <span class="mt-1 block text-xs text-slate-400">Stored encrypted; used only to clone/fetch this one repo. Blank keeps the saved token.</span>
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-slate-600">Environment file (.env)</span>
+            <textarea name="env_file" rows="4"
+                      placeholder="{% if project.env_file_enc %}•••• saved — leave blank to keep{% else %}KEY=value per line (DB_PASSWORD, SECRET_KEY, …){% endif %}"
+                      class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 font-mono text-xs focus:border-violet-400 focus:outline-none"></textarea>
+            <span class="mt-1 block text-xs text-slate-400">Written to <span class="font-mono">/app/.env</span> at container start — never committed or baked into the image. Blank keeps the saved file.</span>
+          </label>
+        </div>
         <div class="flex items-center gap-3">
           <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
             Save

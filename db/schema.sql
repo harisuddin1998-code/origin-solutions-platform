@@ -379,3 +379,10 @@ ALTER TABLE projects ADD COLUMN start_command VARCHAR(500) NULL;
 -- data somewhere else (e.g. gracelogistics reads a relative
 -- "instance/vehicle_management.db", so its mount path is "/app/instance").
 ALTER TABLE projects ADD COLUMN data_mount_path VARCHAR(255) NULL;
+
+-- Private-repo deploys: an encrypted GitHub access token (clone/fetch a
+-- private repo) and an encrypted environment file (written to /app/.env at
+-- container start, so secrets never enter git or the image). Both are
+-- Fernet ciphertext - see core/secrets.py.
+ALTER TABLE projects ADD COLUMN github_token_enc TEXT NULL;
+ALTER TABLE projects ADD COLUMN env_file_enc TEXT NULL;
