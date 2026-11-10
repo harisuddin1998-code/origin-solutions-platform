@@ -295,7 +295,7 @@ def restore_backup(project, name):
 
     from projects.vps_deploy import _backup_data_dir
     try:
-        _backup_data_dir(data_dir, project["id"])
+        _backup_data_dir(data_dir, project["id"], project.get("container_name"))
     except Exception:
         pass
 

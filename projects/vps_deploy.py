@@ -195,7 +195,7 @@ def _fetch_repo(repo_dir, repo_url, branch=None):
         subprocess.run(clone_cmd, check=True, capture_output=True, text=True)
 
 
-def _backup_data_dir(data_dir, project_id):
+def _backup_data_dir(data_dir, project_id, container=None):
     """Snapshot a project's persistent data before a redeploy replaces its
     container.
 
@@ -213,6 +213,15 @@ def _backup_data_dir(data_dir, project_id):
 
     No-op when a project has no persistent data yet, so a first deploy costs
     nothing.
+
+    Apps that write all the time (digportal records GPS history every few
+    seconds) changed files under tar's feet, and tar's exit code 1 ("file
+    changed as we read it") failed the whole redeploy. So the running
+    container is paused (frozen, not stopped - requests just wait) for the
+    few seconds the snapshot takes, which also keeps a SQLite file from
+    being copied half-written; and a file that still changes or vanishes -
+    exit code 1 - is a warning, not a failure. Only exit code 2 (tar could
+    not write the archive at all) stops the deploy.
     """
     if not os.path.isdir(data_dir) or not os.listdir(data_dir):
         return
@@ -220,11 +229,20 @@ def _backup_data_dir(data_dir, project_id):
     backups_dir = current_app.config["CLIENT_BACKUPS_DIR"]
     os.makedirs(backups_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    subprocess.run(
-        ["tar", "-czf", os.path.join(backups_dir, f"{project_id}-{stamp}.tar.gz"),
-         "-C", data_dir, "."],
-        check=True, capture_output=True, text=True,
-    )
+    paused = bool(container) and subprocess.run(
+        ["docker", "pause", container], capture_output=True, text=True,
+    ).returncode == 0
+    try:
+        result = subprocess.run(
+            ["tar", "--warning=no-file-changed", "--warning=no-file-removed", "--ignore-failed-read",
+             "-czf", os.path.join(backups_dir, f"{project_id}-{stamp}.tar.gz"), "-C", data_dir, "."],
+            capture_output=True, text=True,
+        )
+    finally:
+        if paused:
+            subprocess.run(["docker", "unpause", container], capture_output=True, text=True)
+    if result.returncode not in (0, 1):
+        raise RuntimeError(f"tar: {result.stderr.strip()[-300:]}")
 
     prefix = f"{project_id}-"
     stale = sorted(
@@ -278,7 +296,7 @@ def build_deploy_plan(project):
         (
             f"Back up existing data for {project['name']} before redeploying",
             None,
-            lambda: _backup_data_dir(data_dir, project["id"]),
+            lambda: _backup_data_dir(data_dir, project["id"], container),
         ),
         fetch_step,
         (
