@@ -8,7 +8,7 @@ from flask import (
 from core.auth import guard_role
 from core.db import execute, query
 from crm.helpers import get_agency_revenue_summary, get_financial_report, record_payment
-from projects import demo_sites, vps_deploy, webapp_ops, wizard
+from projects import demo_sites, deploy_jobs, vps_deploy, webapp_ops, wizard
 from projects.dockerize import (
     DETECT_FAILED_MESSAGE, STACK_LABELS, DockerizeError, detect_data_paths, detect_stack,
 )
@@ -190,19 +190,21 @@ def deploy_project_route(project_id):
     back = request.referrer or url_for("super_admin.projects")
 
     if project["github_repo"] or os.path.isdir(_repo_dir(project_id)):
-        try:
+        # Runs in the background (see projects/deploy_jobs.py): a build can
+        # outlast Cloudflare's 100s and used to end in a 524 page.
+        def run():
             result = execute_deploy(project_id)
             commit = result.get("commit")
             if commit:
-                flash(
-                    f"Deployed {commit['sha']} — \"{commit['message']}\" "
-                    f"({commit['when']}). Live at {result['live_url']}",
-                    "success",
-                )
-            else:
-                flash(f"Deployed — live at {result['live_url']}", "success")
-        except (ValueError, RuntimeError) as exc:
-            flash(str(exc), "error")
+                return (f"Deployed {commit['sha']} — \"{commit['message']}\" "
+                        f"({commit['when']}). Live at {result['live_url']}")
+            return f"Deployed — live at {result['live_url']}"
+
+        if deploy_jobs.start(project_id, run):
+            flash(f"Deploy of {project['name']} started. It runs in the background - "
+                  "the Web Apps page shows the result when it finishes.", "success")
+        else:
+            flash(f"A deploy of {project['name']} is already running - wait for it to finish.", "error")
     else:
         try:
             deploy_project(project["subdomain"])
@@ -278,6 +280,7 @@ def _webapp_context(project_id, **extra):
         "data_dir": os.path.join(current_app.config["CLIENT_DATA_DIR"], str(project["id"])),
         "commit": vps_deploy._head_commit(_repo_dir(project["id"])),
         "console_output": None,
+        "deploy_job": deploy_jobs.status(project["id"]),
     }
     ctx.update(extra)
     return ctx
